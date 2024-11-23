@@ -10,6 +10,7 @@ uses
   System.SysUtils,
   System.Types,
   CUUnit.Consts in 'Units\Common\CUUnit.Consts.pas',
+  CUUnit.Custom.Commandline in 'Units\Common\CUUnit.Custom.Commandline.pas',
   CUUnit.Types in 'Units\Common\CUUnit.Types.pas',
   CUUnit.Utils in 'Units\Common\CUUnit.Utils.pas',
   DCUnit.CommandLine in 'Units\DirectoryCompress\DCUnit.CommandLine.pas',

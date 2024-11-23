@@ -157,7 +157,7 @@ var
   LCommandLine: string;
 begin
   LDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(IncludeTrailingPathDelimiter(ACurrentDirectoryName),
-    FCommandLineOptions.DestinationFileNameFilter));
+    FCommandLineOptions.FileNameFilter));
 
   if LDestinationDirName.IsEmpty then
     Exit;
@@ -196,7 +196,7 @@ begin
   for LIndex := ADirectories.Count - 1 downto 0 do
   begin
     LCurrentDirectory := ADirectories[LIndex];
-    LLDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(LCurrentDirectory, FCommandLineOptions.DestinationFileNameFilter));
+    LLDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(LCurrentDirectory, FCommandLineOptions.FileNameFilter));
 
     if LLDestinationDirName.IsEmpty then
     begin
