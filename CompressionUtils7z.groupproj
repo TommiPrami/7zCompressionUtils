@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{F2860C43-DA33-49B9-94F8-F140152EFA0C}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="DirectoryCompress7z.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="FileCompress7z.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="DirectoryCompress7z">
+        <MSBuild Projects="DirectoryCompress7z.dproj"/>
+    </Target>
+    <Target Name="DirectoryCompress7z:Clean">
+        <MSBuild Projects="DirectoryCompress7z.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="DirectoryCompress7z:Make">
+        <MSBuild Projects="DirectoryCompress7z.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="FileCompress7z">
+        <MSBuild Projects="FileCompress7z.dproj"/>
+    </Target>
+    <Target Name="FileCompress7z:Clean">
+        <MSBuild Projects="FileCompress7z.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="FileCompress7z:Make">
+        <MSBuild Projects="FileCompress7z.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="DirectoryCompress7z;FileCompress7z"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="DirectoryCompress7z:Clean;FileCompress7z:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="DirectoryCompress7z:Make;FileCompress7z:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
