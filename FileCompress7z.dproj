@@ -112,6 +112,7 @@
         <DCCReference Include="Units\Common\CUUnit.Types.pas"/>
         <DCCReference Include="Units\Common\CUUnit.Utils.pas"/>
         <DCCReference Include="Units\Common\CUUnit.Custom.Commandline.pas"/>
+        <DCCReference Include="Units\Common\CUUnit.Custom.Compressor.pas"/>
         <DCCReference Include="Units\FileCompress\FCUnit.CommandLine.pas"/>
         <DCCReference Include="Units\FileCompress\FCUnit.FileCompressor.pas"/>
         <BuildConfiguration Include="Base">

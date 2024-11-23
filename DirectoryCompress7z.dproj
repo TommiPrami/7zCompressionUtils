@@ -82,6 +82,7 @@
         </DelphiCompile>
         <DCCReference Include="Units\Common\CUUnit.Consts.pas"/>
         <DCCReference Include="Units\Common\CUUnit.Custom.Commandline.pas"/>
+        <DCCReference Include="Units\Common\CUUnit.Custom.Compressor.pas"/>
         <DCCReference Include="Units\Common\CUUnit.Types.pas"/>
         <DCCReference Include="Units\Common\CUUnit.Utils.pas"/>
         <DCCReference Include="Units\DirectoryCompress\DCUnit.CommandLine.pas"/>

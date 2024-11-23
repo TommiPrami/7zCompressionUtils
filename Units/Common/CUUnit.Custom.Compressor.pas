@@ -1,17 +1,29 @@
-﻿unit FCUnit.FileCompressor;
+﻿unit CUUnit.Custom.Compressor;
 
 interface
 
 uses
-  System.Classes, System.IOUtils, System.SyncObjs, OtlParallel, OtlCommon, OtlCollections, OtlTask, FCUnit.CommandLine,
-  CUUnit.Custom.Compressor;
+  System.Classes, System.IOUtils, System.SyncObjs, OtlParallel, OtlCommon, OtlCollections, OtlTask,
+  CUUnit.Custom.Commandline;
 
 type
-  TFileCompress7z = class(TCustomCompressor7z)
+  TCustomCompressor7z = class(TObject)
   strict private
-    procedure CompressFile(const ARootDirectory, AFilename: string);
+    FCriticalSection: TCriticalSection;
+  strict protected
+    FCompressorCommandLineOptions: TCustomCompressLineOptions;
+    FRunningTasks: Boolean;
+    FTaksStarted: Int64;
+    function Lock: Boolean; inline;
+    procedure Unlock; inline;
+    procedure LockingWriteLn(const ALine: string);
+    // procedure CompressFile(const ARootDirectory, AFilename: string);
+    procedure FilterByDirectories(const AFiles: TStringList; const ARootDirectory: string);
   public
-    procedure Execute;
+    constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
+    destructor Destroy; override;
+
+    // procedure Execute;
   end;
 
 implementation
@@ -19,7 +31,35 @@ implementation
 uses
   System.Diagnostics, System.Math, System.SysUtils, CUUnit.Types, CUUnit.Utils;
 
-procedure TFileCompress7z.Execute;
+function TCustomCompressor7z.Lock: Boolean;
+begin
+  Result := False;
+
+  if not Assigned(FCriticalSection) then
+    Exit;
+
+  FCriticalSection.Acquire;
+
+  Result := True;
+end;
+
+procedure TCustomCompressor7z.Unlock;
+begin
+  FCriticalSection.Release;
+end;
+
+procedure TCustomCompressor7z.LockingWriteLn(const ALine: string);
+begin
+  if Lock then
+  try
+    WriteLn(ALine);
+  finally
+    Unlock;
+  end;
+end;
+
+(*
+procedure TCustomCompressor7z.Execute;
 var
   LFiles: TStringList;
 begin
@@ -88,8 +128,33 @@ begin
     LFiles.Free;
   end;
 end;
+*)
 
-procedure TFileCompress7z.CompressFile(const ARootDirectory, AFilename: string);
+constructor TCustomCompressor7z.Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
+begin
+  inherited Create;
+
+  FCriticalSection := TCriticalSection.Create;
+  FCompressorCommandLineOptions := ACompressorCommandLineOptions;
+
+  { Need one or more calls to stabilize, it seems... one round could be enough, hard to say
+    So we warm CPU usage code up }
+  for var LIndex := 1 to 5 do
+  begin
+    TotalCpuUsagePercentage;
+    Sleep(Random(42));
+  end;
+end;
+
+destructor TCustomCompressor7z.Destroy;
+begin
+  FreeAndNil(FCriticalSection);
+
+  inherited Destroy;
+end;
+
+(*
+procedure TCustomCompressor7z.CompressFile(const ARootDirectory, AFilename: string);
 const
   EXE_7Z = 'C:\Program Files\7-Zip\7z.exe';
 var
@@ -118,6 +183,26 @@ begin
     ForceDirectories(LDestinationDir);
 
   ExecuteAndWait(LCommandLine, fcpcIdle);
+end;
+*)
+
+procedure TCustomCompressor7z.FilterByDirectories(const AFiles: TStringList; const ARootDirectory: string);
+var
+  LIndex: Integer;
+  LFileNameOnly: string;
+  LDestinationDir: string;
+begin
+  for LIndex := AFiles.Count - 1 downto 0 do
+  begin
+    LFileNameOnly := GetFileNameOnly(AFiles[LIndex]);
+    LDestinationDir := ARootDirectory + LFileNameOnly;
+
+    if not DirEmpty(LDestinationDir) then
+    begin
+      WriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'));
+      AFiles.Delete(LIndex);
+    end;
+  end;
 end;
 
 end.

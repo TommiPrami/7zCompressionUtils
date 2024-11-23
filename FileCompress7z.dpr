@@ -10,6 +10,7 @@ uses
   CUUnit.Types in 'Units\Common\CUUnit.Types.pas',
   CUUnit.Utils in 'Units\Common\CUUnit.Utils.pas',
   CUUnit.Custom.Commandline in 'Units\Common\CUUnit.Custom.Commandline.pas',
+  CUUnit.Custom.Compressor in 'Units\Common\CUUnit.Custom.Compressor.pas',
   FCUnit.CommandLine in 'Units\FileCompress\FCUnit.CommandLine.pas',
   FCUnit.FileCompressor in 'Units\FileCompress\FCUnit.FileCompressor.pas';
 

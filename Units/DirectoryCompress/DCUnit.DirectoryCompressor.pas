@@ -4,24 +4,13 @@ interface
 
 uses
   System.Classes, System.Diagnostics, System.IOUtils, System.SyncObjs, DCUnit.CommandLine,
-  OtlParallel, OtlCommon, OtlCollections, OtlTask;
+  OtlParallel, OtlCommon, OtlCollections, OtlTask, CUUnit.Custom.Compressor;
 
 type
-  TDirectoryCompressor = class(TObject)
+  TDirectoryCompressor = class(TCustomCompressor7z)
   strict private
-    FCriticalSection: TCriticalSection;
-    FRunningTasks: Boolean;
-    FCommandLineOptions: TDirectoryCompressLineOptions;
-    FTaksStarted: Int64;
-    function Lock: Boolean; inline;
-    procedure Unlock; inline;
-    procedure LockingWriteLn(const ALine: string);
     procedure CompressFile(const ACurrentDirectoryName, ADestinationRoot: string);
-    procedure FilterByDirectories(const ADirectories: TStringList; const ADestinationRootDirectory: string);
   public
-    constructor Create(const ACommandLineOptions: TDirectoryCompressLineOptions);
-    destructor Destroy; override;
-
     procedure Execute;
   end;
 
@@ -30,42 +19,15 @@ implementation
 uses
   Winapi.Windows, System.Math, System.SysUtils, CUUnit.Types, CUUnit.Utils;
 
-function TDirectoryCompressor.Lock: Boolean;
-begin
-  Result := False;
-
-  if not Assigned(FCriticalSection) then
-    Exit;
-
-  FCriticalSection.Acquire;
-
-  Result := True;
-end;
-
-procedure TDirectoryCompressor.Unlock;
-begin
-  FCriticalSection.Release;
-end;
-
-procedure TDirectoryCompressor.LockingWriteLn(const ALine: string);
-begin
-  if Lock then
-  try
-    WriteLn(ALine);
-  finally
-    Unlock;
-  end;
-end;
-
 procedure TDirectoryCompressor.Execute;
 var
   LDirectories: TStringList;
 begin
   LDirectories := TStringList.Create;
   try
-    LDirectories.AddStrings(TDirectory.GetDirectories(FCommandLineOptions.SourceRoot, '*.*', TSearchOption.soTopDirectoryOnly));
+    LDirectories.AddStrings(TDirectory.GetDirectories(FCompressorCommandLineOptions.SourceRoot, '*.*', TSearchOption.soTopDirectoryOnly));
 
-    FilterByDirectories(LDirectories, FCommandLineOptions.DestinationRoot);
+    FilterByDirectories(LDirectories, TDirectoryCompressLineOptions(FCompressorCommandLineOptions).DestinationRoot);
 
     if LDirectories.Count > 0 then
     begin
@@ -93,7 +55,7 @@ begin
           begin
             LCurrentDirectoryName := ADirectoryName;
 
-            CompressFile(LCurrentDirectoryName, FCommandLineOptions.DestinationRoot);
+            CompressFile(LCurrentDirectoryName, TDirectoryCompressLineOptions(FCompressorCommandLineOptions).DestinationRoot);
           end
       );
 
@@ -116,36 +78,13 @@ begin
     end
     else
     begin
-      LockingWriteLn('No files found from directory "' + FCommandLineOptions.SourceRoot);
+      LockingWriteLn('No files found from directory "' + FCompressorCommandLineOptions.SourceRoot);
 
       Exit;
     end;
   finally
     LDirectories.Free;
   end;
-end;
-
-constructor TDirectoryCompressor.Create(const ACommandLineOptions: TDirectoryCompressLineOptions);
-begin
-  inherited Create;
-
-  FCriticalSection := TCriticalSection.Create;
-  FCommandLineOptions := ACommandLineOptions;
-
-  { Need one or more calls to stabilize, it seems....
-    So we warm CPU usage code up }
-  for var LIndex := 1 to 5 do
-  begin
-    TotalCpuUsagePercentage;
-    Sleep(Random(100));
-  end;
-end;
-
-destructor TDirectoryCompressor.Destroy;
-begin
-  FreeAndNil(FCriticalSection);
-
-  inherited Destroy;
 end;
 
 procedure TDirectoryCompressor.CompressFile(const ACurrentDirectoryName, ADestinationRoot: string);
@@ -157,7 +96,7 @@ var
   LCommandLine: string;
 begin
   LDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(IncludeTrailingPathDelimiter(ACurrentDirectoryName),
-    FCommandLineOptions.FileNameFilter));
+    FCompressorCommandLineOptions.FileNameFilter));
 
   if LDestinationDirName.IsEmpty then
     Exit;
@@ -167,7 +106,7 @@ begin
   if Lock then
   try
     LCommandLine := EXE_7Z.QuotedString('"') + ' ' + 'a -r'
-      + GetCompressionCommandlineOptions(FCommandLineOptions.CompressionLevel) + '-v1000m '
+      + GetCompressionCommandlineOptions(FCompressorCommandLineOptions.CompressionLevel) + '-v1000m '
       + '"' + LDestinationRoot + LDestinationDirName + '.7z" "'
       + IncludeTrailingPathDelimiter(ACurrentDirectoryName) + '*.*' +  '"';
 
@@ -185,36 +124,5 @@ begin
 
   ExecuteAndWait(LCommandLine, fcpcIdle);
 end;
-
-procedure TDirectoryCompressor.FilterByDirectories(const ADirectories: TStringList; const ADestinationRootDirectory: string);
-var
-  LIndex: Integer;
-  LCurrentDirectory: string;
-  LLDestinationDirName: string;
-  LDestinationDir: string;
-begin
-  for LIndex := ADirectories.Count - 1 downto 0 do
-  begin
-    LCurrentDirectory := ADirectories[LIndex];
-    LLDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(LCurrentDirectory, FCommandLineOptions.FileNameFilter));
-
-    if LLDestinationDirName.IsEmpty then
-    begin
-      ADirectories.Delete(LIndex);
-
-      Continue;
-    end;
-
-    LDestinationDir := ADestinationRootDirectory + LLDestinationDirName;
-
-    if not DirEmpty(LDestinationDir) then
-    begin
-      WriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'));
-
-      ADirectories.Delete(LIndex);
-    end;
-  end;
-end;
-
 
 end.
