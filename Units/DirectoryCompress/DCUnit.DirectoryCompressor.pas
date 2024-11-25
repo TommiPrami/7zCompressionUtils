@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs,, System.IOUtils, DCUnit.CommandLine, CUUnit.Custom.Compressor;
+  System.Classes, System.SyncObjs, System.IOUtils, DCUnit.CommandLine, CUUnit.Custom.Compressor;
 
 type
   TDirectoryCompressor = class(TCustomCompressor7z)
