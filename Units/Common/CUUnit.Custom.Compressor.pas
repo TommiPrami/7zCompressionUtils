@@ -3,27 +3,30 @@
 interface
 
 uses
-  System.Classes, System.IOUtils, System.SyncObjs, OtlParallel, OtlCommon, OtlCollections, OtlTask,
+  System.Classes, System.SyncObjs, OtlParallel, OtlCommon, OtlCollections, OtlTask,
   CUUnit.Custom.Commandline;
 
 type
   TCustomCompressor7z = class(TObject)
   strict private
     FCriticalSection: TCriticalSection;
+    FTaksStarted: Int64;
+    FTaskTotal: Integer;
+    FRunningTasks: Boolean;
+    procedure CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
   strict protected
     FCompressorCommandLineOptions: TCustomCompressLineOptions;
-    FRunningTasks: Boolean;
-    FTaksStarted: Int64;
     function Lock: Boolean; inline;
     procedure Unlock; inline;
-    procedure LockingWriteLn(const ALine: string);
-    // procedure CompressFile(const ARootDirectory, AFilename: string);
-    procedure FilterByDirectories(const AFiles: TStringList; const ARootDirectory: string);
+    procedure LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
+    procedure FilterByDirectories(const AItems: TStringList; const ARootDirectory: string);
+    procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); virtual; abstract;
+    function GetItemsToBeCompressed: TArray<string>; virtual; abstract;
   public
     constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
     destructor Destroy; override;
 
-    // procedure Execute;
+    procedure Execute;
   end;
 
 implementation
@@ -48,35 +51,82 @@ begin
   FCriticalSection.Release;
 end;
 
-procedure TCustomCompressor7z.LockingWriteLn(const ALine: string);
+procedure TCustomCompressor7z.LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
 begin
   if Lock then
   try
-    WriteLn(ALine);
+    WriteLn(StringOfChar(' ', AIndent * 2) + ALine);
   finally
     Unlock;
   end;
 end;
 
-(*
+procedure TCustomCompressor7z.CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
+var
+  LTasksStarted: Integer;
+begin
+  if not Lock then
+    Exit;
+
+  try
+    Inc(FTaksStarted);
+    LTasksStarted := FTaksStarted;
+  finally
+    UnLock;
+  end;
+
+  WaitForSystemStatus(IfThen(LTasksStarted <= 1, 333, 10 * 666), 76.66, 76.66);
+
+  if not DirectoryExists(ADestinationRoot) then
+    ForceDirectories(ADestinationRoot);
+
+  var LIntFormat := GetIntFormat(FTaskTotal);
+
+  LockingWriteLn(Format(LIntFormat, [LTasksStarted]) + '/' + Format(LIntFormat, [FTaskTotal]) + 'Executing: '
+    + ACurrentItem + '...', 2);
+  ExecuteAndWait(ACommandLine, fcpcIdle);
+end;
+
+constructor TCustomCompressor7z.Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
+begin
+  inherited Create;
+
+  FCriticalSection := TCriticalSection.Create;
+  FCompressorCommandLineOptions := ACompressorCommandLineOptions;
+
+  { Need one or more calls to stabilize, it seems... one round could be enough, hard to say
+    So we warm CPU usage code up }
+  for var LIndex := 1 to 3 do
+  begin
+    TotalCpuUsagePercentage;
+    Sleep(Random(42));
+  end;
+end;
+
+destructor TCustomCompressor7z.Destroy;
+begin
+  FreeAndNil(FCriticalSection);
+
+  inherited Destroy;
+end;
+
 procedure TCustomCompressor7z.Execute;
 var
-  LFiles: TStringList;
+  LItemsToBeCompressed: TStringList;
 begin
-  LFiles := TStringList.Create;
+  LItemsToBeCompressed := TStringList.Create;
   try
-    LFiles.AddStrings(TDirectory.GetFiles(FCompressorCommandLineOptions.SourceRoot, FCompressorCommandLineOptions.FileNameFilter,
-      TSearchOption.soTopDirectoryOnly));
+    LItemsToBeCompressed.AddStrings(GetItemsToBeCompressed);
 
-    FilterByDirectories(LFiles, FCompressorCommandLineOptions.SourceRoot);
+    FilterByDirectories(LItemsToBeCompressed, FCompressorCommandLineOptions.SourceRoot);
 
-    if LFiles.Count > 0 then
+    if LItemsToBeCompressed.Count > 0 then
     begin
       var LStopWatch := TStopWatch.StartNew;
 
       FRunningTasks := True;
 
-      Parallel.ForEach(LFiles)
+      Parallel.ForEach(LItemsToBeCompressed)
         .NumTasks(ScaleCoreCount(FCompressorCommandLineOptions.CoresToUse))
         .OnStop(
           procedure
@@ -93,11 +143,14 @@ begin
         .Execute(
           procedure(const AFileName: TOmniValue)
           var
-            LCurrentFile: string;
+            LCurrentItem: string;
+            LDestinationRoot: string;
+            LCommandLine: string;
           begin
-            LCurrentFile := AFileName;
+            LCurrentItem := AFileName;
 
-            CompressFile(FCompressorCommandLineOptions.SourceRoot, ExtractFileName(LCurrentFile));
+            PrepareITemForCompression(LCurrentItem, LDestinationRoot, LCommandLine);
+            CompressItem(LCurrentItem, LDestinationRoot, LCommandLine)
           end
         );
 
@@ -116,92 +169,45 @@ begin
       end;
 
       LStopWatch.Stop;
-      LockingWriteLn(' Elapsed time: ' + LStopWatch.Elapsed.ToString);
+      LockingWriteLn(' Elapsed time: ' + LStopWatch.Elapsed.ToString, 1);
     end
     else
     begin
-      LockingWriteLn('No files found from directory "' + FCompressorCommandLineOptions.SourceRoot + '" with search pattern "' + FCompressorCommandLineOptions.FileNameFilter + '"');
+      LockingWriteLn('No files found from directory "' + FCompressorCommandLineOptions.SourceRoot, 3);
 
       Exit;
     end;
   finally
-    LFiles.Free;
-  end;
-end;
-*)
-
-constructor TCustomCompressor7z.Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
-begin
-  inherited Create;
-
-  FCriticalSection := TCriticalSection.Create;
-  FCompressorCommandLineOptions := ACompressorCommandLineOptions;
-
-  { Need one or more calls to stabilize, it seems... one round could be enough, hard to say
-    So we warm CPU usage code up }
-  for var LIndex := 1 to 5 do
-  begin
-    TotalCpuUsagePercentage;
-    Sleep(Random(42));
+    LItemsToBeCompressed.Free;
   end;
 end;
 
-destructor TCustomCompressor7z.Destroy;
-begin
-  FreeAndNil(FCriticalSection);
-
-  inherited Destroy;
-end;
-
-(*
-procedure TCustomCompressor7z.CompressFile(const ARootDirectory, AFilename: string);
-const
-  EXE_7Z = 'C:\Program Files\7-Zip\7z.exe';
-var
-  LFileNameOnly: string;
-  LDestinationDir: string;
-  LCommandLine: string;
-begin
-  LFileNameOnly := GetFileNameOnly(AFilename);
-  LDestinationDir := ARootDirectory + LFileNameOnly;
-
-  if Lock then
-  try
-    LCommandLine := EXE_7Z + ' ' + 'a -mx9 -md1024m -mfb256 -mmt=off -v1000m "'
-      + IncludeTrailingPathDelimiter(LDestinationDir) + LFileNameOnly + '.7z" "'
-      + ARootDirectory + AFilename + '"';
-
-    WriteLn('Executing: ' + LCommandLine + '...');
-    Inc(FTaksStarted);
-  finally
-    Unlock
-  end;
-
-  WaitForSystemStatus(IfThen(FTaksStarted <= 1, 100, 4000), 76.66, 76.66);
-
-  if not DirectoryExists(LDestinationDir) then
-    ForceDirectories(LDestinationDir);
-
-  ExecuteAndWait(LCommandLine, fcpcIdle);
-end;
-*)
-
-procedure TCustomCompressor7z.FilterByDirectories(const AFiles: TStringList; const ARootDirectory: string);
+procedure TCustomCompressor7z.FilterByDirectories(const AItems: TStringList; const ARootDirectory: string);
 var
   LIndex: Integer;
   LFileNameOnly: string;
   LDestinationDir: string;
 begin
-  for LIndex := AFiles.Count - 1 downto 0 do
-  begin
-    LFileNameOnly := GetFileNameOnly(AFiles[LIndex]);
-    LDestinationDir := ARootDirectory + LFileNameOnly;
+  if not Lock then
+    Exit;
 
-    if not DirEmpty(LDestinationDir) then
+  try
+    for LIndex := AItems.Count - 1 downto 0 do
     begin
-      WriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'));
-      AFiles.Delete(LIndex);
+      // TODO: Tämä ei ole abstaktoitu vielä...
+      LFileNameOnly := GetFileNameOnly(AItems[LIndex]);
+      LDestinationDir := ARootDirectory + LFileNameOnly;
+
+      if not DirEmpty(LDestinationDir) then
+      begin
+        LockingWriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'), 3);
+        AItems.Delete(LIndex);
+      end;
     end;
+
+    FTaskTotal := AItems.Count;
+  finally
+    UnLock;
   end;
 end;
 

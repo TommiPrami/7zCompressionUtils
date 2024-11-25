@@ -18,6 +18,7 @@ uses
   function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
   function GetLastDirectoryName(const ADirectory: string): string;
   function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel): string;
+  function GetIntFormat(const AMaxItems: Integer): string;
 
 implementation
 
@@ -233,6 +234,25 @@ begin
   end;
 
   Result := ' ' + Result + ' ';
+end;
+
+function GetDigitCount(const ANumber: Integer): Integer;
+
+  procedure CheckParameter(const AParameter: Integer);
+  begin
+    if AParameter <= 0 then
+      raise Exception.Create('Number must be greater than 0'); // Handle edge cases
+  end;
+
+begin
+  CheckParameter(ANumber);
+
+  Result := Trunc(Log10(ANumber)) + 1;
+end;
+
+function GetIntFormat(const AMaxItems: Integer): string;
+begin
+  Result := '%.' + GetDigitCount(AMaxItems).ToString + 'd';
 end;
 
 initialization
