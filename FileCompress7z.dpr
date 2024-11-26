@@ -21,13 +21,21 @@ begin
   try
     if not ParseCommandLine(LCommandLineOptions) then
     begin
-      ExitCode := 1;
+      ExitCode := EXIT_CODE_ERROR_IN_COMMANDLINE_PARAMS;
+
       Exit;
     end;
 
     LFileCompress := TFileCompress7z.Create(LCommandLineOptions);
     try
       LFileCompress.Execute;
+
+      {$IFDEF DEBUG}
+      LFileCompress.LockingWriteLn('');
+      LFileCompress.LockingWriteLn('Press [Enter] to continue');
+
+      ReadLn;
+      {$ENDIF}
     finally
       LFileCompress.Free;
     end;

@@ -14,19 +14,24 @@ type
     FTaskTotal: Integer;
     FRunningTasks: Boolean;
     procedure CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
+    procedure WriteCommandlinePrototype;
   strict protected
     FCompressorCommandLineOptions: TCustomCompressLineOptions;
     function Lock: Boolean; inline;
     procedure Unlock; inline;
-    procedure LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
-    procedure FilterByDirectories(const AItems: TStringList; const ARootDirectory: string);
+    procedure FilterByDirectories(const AItems: TStringList);
     procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); virtual; abstract;
     function GetItemsToBeCompressed: TArray<string>; virtual; abstract;
+    function GetDestinationItemName(const ACurrentItemName: string): string; virtual; abstract;
+    function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; virtual; abstract;
+    function GetSourceRoot: string; virtual; abstract;
+    function GetCoreCount: Integer; virtual; abstract;
   public
     constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
     destructor Destroy; override;
 
     procedure Execute;
+    procedure LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
   end;
 
 implementation
@@ -51,6 +56,24 @@ begin
   FCriticalSection.Release;
 end;
 
+procedure TCustomCompressor7z.WriteCommandlinePrototype;
+{
+const
+  PROTOTYPE_INDENT = 3;
+  ITEM_PROTOTYPE = 'Item_1';
+var
+  LCommandLinePrototype: string;
+  LDestinationRooot: string; }
+begin
+  { TODO: Have to think how this could be doce without acual file system checks
+
+  PrepareItemForCompression(ITEM_PROTOTYPE, LDestinationRooot, LCommandLinePrototype);
+  LockingWriteLn('', PROTOTYPE_INDENT);
+  LockingWriteLn('Commandline prototype: ' + LCommandLinePrototype, PROTOTYPE_INDENT);
+  LockingWriteLn('', PROTOTYPE_INDENT);
+  }
+end;
+
 procedure TCustomCompressor7z.LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
 begin
   if Lock then
@@ -62,6 +85,14 @@ begin
 end;
 
 procedure TCustomCompressor7z.CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
+
+  function GetItemOfMaxStr(const AItemIndex: Integer): string;
+  begin
+    var LIntFormat := GetIntFormat(FTaskTotal);
+
+    Result := Format(LIntFormat, [AItemIndex]) + '/' + Format(LIntFormat, [FTaskTotal])
+  end;
+
 var
   LTasksStarted: Integer;
 begin
@@ -80,10 +111,8 @@ begin
   if not DirectoryExists(ADestinationRoot) then
     ForceDirectories(ADestinationRoot);
 
-  var LIntFormat := GetIntFormat(FTaskTotal);
 
-  LockingWriteLn(Format(LIntFormat, [LTasksStarted]) + '/' + Format(LIntFormat, [FTaskTotal]) + 'Executing: '
-    + ACurrentItem + '...', 2);
+  LockingWriteLn(GetItemOfMaxStr(LTasksStarted) + ' Executing: ' + ACurrentItem + '...', 2);
   ExecuteAndWait(ACommandLine, fcpcIdle);
 end;
 
@@ -114,11 +143,13 @@ procedure TCustomCompressor7z.Execute;
 var
   LItemsToBeCompressed: TStringList;
 begin
+  WriteCommandlinePrototype;
+
   LItemsToBeCompressed := TStringList.Create;
   try
     LItemsToBeCompressed.AddStrings(GetItemsToBeCompressed);
 
-    FilterByDirectories(LItemsToBeCompressed, FCompressorCommandLineOptions.SourceRoot);
+    FilterByDirectories(LItemsToBeCompressed);
 
     if LItemsToBeCompressed.Count > 0 then
     begin
@@ -127,7 +158,7 @@ begin
       FRunningTasks := True;
 
       Parallel.ForEach(LItemsToBeCompressed)
-        .NumTasks(ScaleCoreCount(FCompressorCommandLineOptions.CoresToUse))
+        .NumTasks(GetCoreCount)
         .OnStop(
           procedure
           begin
@@ -149,8 +180,10 @@ begin
           begin
             LCurrentItem := AFileName;
 
-            PrepareITemForCompression(LCurrentItem, LDestinationRoot, LCommandLine);
-            CompressItem(LCurrentItem, LDestinationRoot, LCommandLine)
+            PrepareItemForCompression(LCurrentItem, LDestinationRoot, LCommandLine);
+
+            if not LCommandLine.IsEmpty and not LDestinationRoot.IsEmpty  then
+              CompressItem(LCurrentItem, LDestinationRoot, LCommandLine)
           end
         );
 
@@ -173,7 +206,7 @@ begin
     end
     else
     begin
-      LockingWriteLn('No files found from directory "' + FCompressorCommandLineOptions.SourceRoot, 3);
+      LockingWriteLn('Nothing to compress was found from directory ' + GetSourceRoot.QuotedString('"') , 3);
 
       Exit;
     end;
@@ -182,10 +215,10 @@ begin
   end;
 end;
 
-procedure TCustomCompressor7z.FilterByDirectories(const AItems: TStringList; const ARootDirectory: string);
+procedure TCustomCompressor7z.FilterByDirectories(const AItems: TStringList);
 var
   LIndex: Integer;
-  LFileNameOnly: string;
+  LDestinationItemName: string;
   LDestinationDir: string;
 begin
   if not Lock then
@@ -194,9 +227,8 @@ begin
   try
     for LIndex := AItems.Count - 1 downto 0 do
     begin
-      // TODO: Tämä ei ole abstaktoitu vielä...
-      LFileNameOnly := GetFileNameOnly(AItems[LIndex]);
-      LDestinationDir := ARootDirectory + LFileNameOnly;
+      LDestinationItemName := GetDestinationItemName(AItems[LIndex]);
+      LDestinationDir := GetDestinationDirectory(LDestinationItemName);
 
       if not DirEmpty(LDestinationDir) then
       begin
@@ -210,5 +242,6 @@ begin
     UnLock;
   end;
 end;
+
 
 end.

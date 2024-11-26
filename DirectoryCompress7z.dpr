@@ -30,14 +30,18 @@ begin
       Exit;
     end;
 
-    if DirectoryExists(LCommandLineOptions.SourceRoot) then
-    begin
-      LDirectoryCompress := TDirectoryCompressor.Create(LCommandLineOptions);
-      try
-        LDirectoryCompress.Execute;
-      finally
-        LDirectoryCompress.Free;
-      end;
+    LDirectoryCompress := TDirectoryCompressor.Create(LCommandLineOptions);
+    try
+      LDirectoryCompress.Execute;
+
+      {$IFDEF DEBUG}
+      LDirectoryCompress.LockingWriteLn('');
+      LDirectoryCompress.LockingWriteLn('Press [Enter] to continue');
+
+      ReadLn;
+      {$ENDIF}
+    finally
+      LDirectoryCompress.Free;
     end;
   except
     on E: Exception do

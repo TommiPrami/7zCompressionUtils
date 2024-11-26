@@ -7,10 +7,13 @@ uses
 
 type
   TFileCompress7z = class(TCustomCompressor7z)
-  strict private
   strict protected
     procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); override;
     function GetItemsToBeCompressed: TArray<string>; override;
+    function GetDestinationItemName(const ACurrentItemName: string): string; override;
+    function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
+    function GetCoreCount: Integer; override;
+    function GetSourceRoot: string; override;
   public
   end;
 
@@ -21,26 +24,52 @@ uses
 
 function TFileCompress7z.GetItemsToBeCompressed: TArray<string>;
 begin
-  Result := TDirectory.GetFiles(FCompressorCommandLineOptions.SourceRoot, FCompressorCommandLineOptions.FileNameFilter,
-    TSearchOption.soTopDirectoryOnly)
+  Result := TDirectory.GetFiles(TFileCompressLineOptions(FCompressorCommandLineOptions).SourceRoot,
+    TFileCompressLineOptions(FCompressorCommandLineOptions).FileNameFilter, TSearchOption.soTopDirectoryOnly);
 end;
 
-procedure TFileCompress7z.PrepareITemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string);
+function TFileCompress7z.GetSourceRoot: string;
+begin
+  Result := TFileCompressLineOptions(FCompressorCommandLineOptions).SourceRoot;
+end;
+
+function TFileCompress7z.GetDestinationItemName(const ACurrentItemName: string): string;
+begin
+  Result := GetFileNameOnly(ACurrentItemName);
+end;
+
+function TFileCompress7z.GetCoreCount: Integer;
+begin
+  Result := ScaleCoreCount(TFileCompressLineOptions(FCompressorCommandLineOptions).CoresToUse)
+end;
+
+function TFileCompress7z.GetDestinationDirectory(const ACurrentDestinationItemName: string): string;
+begin
+  Result := GetSourceRoot + ACurrentDestinationItemName;
+end;
+
+procedure TFileCompress7z.PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string);
 const
   EXE_7Z = 'C:\Program Files\7-Zip\7z.exe';
 var
-  LFileNameOnly: string;
-  LDestinationDir: string;
-  LCommandLine: string;
+  LDestinationItemName: string;
 begin
-  LFileNameOnly := GetFileNameOnly(ACurrentItemName);
-  LDestinationDir := FCompressorCommandLineOptions.SourceRoot + LFileNameOnly;
+  ADestinationRoot := '';
+  ACommandLine := '';
 
+  LDestinationItemName := GetDestinationItemName(ACurrentItemName);
+
+  if LDestinationItemName.IsEmpty then
+    Exit;
+
+  ADestinationRoot := GetDestinationDirectory(LDestinationItemName);
+
+  // TODO: Should not need to lock here
   if Lock then
   try
-    LCommandLine := EXE_7Z + ' ' + 'a -mx9 -md1024m -mfb256 -mmt=off -v1000m "'
-      + IncludeTrailingPathDelimiter(LDestinationDir) + LFileNameOnly + '.7z" "'
-      + FCompressorCommandLineOptions.SourceRoot + ACurrentItemName + '"';
+    ACommandLine := EXE_7Z + ' ' + 'a -mx9 -md1024m -mfb256 -mmt=off -v1000m "'
+      + IncludeTrailingPathDelimiter(ADestinationRoot) + LDestinationItemName + '.7z" '
+      + ACurrentItemName.QuotedString('"');
   finally
     Unlock
   end;
