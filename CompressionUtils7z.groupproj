@@ -6,6 +6,9 @@
         <Projects Include="FileCompress7z.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="DirectoryCompress7z.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -23,14 +26,23 @@
     <Target Name="FileCompress7z:Make">
         <MSBuild Projects="FileCompress7z.dproj" Targets="Make"/>
     </Target>
+    <Target Name="DirectoryCompress7z">
+        <MSBuild Projects="DirectoryCompress7z.dproj"/>
+    </Target>
+    <Target Name="DirectoryCompress7z:Clean">
+        <MSBuild Projects="DirectoryCompress7z.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="DirectoryCompress7z:Make">
+        <MSBuild Projects="DirectoryCompress7z.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="FileCompress7z"/>
+        <CallTarget Targets="FileCompress7z;DirectoryCompress7z"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="FileCompress7z:Clean"/>
+        <CallTarget Targets="FileCompress7z:Clean;DirectoryCompress7z:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="FileCompress7z:Make"/>
+        <CallTarget Targets="FileCompress7z:Make;DirectoryCompress7z:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
