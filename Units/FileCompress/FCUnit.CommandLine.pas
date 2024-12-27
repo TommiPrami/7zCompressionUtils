@@ -13,7 +13,7 @@ type
     FCompressionLevel: TCompressionLevel;
     FCoresToUse: Integer;
   public
-    [CLPLongName('SourceRoot'), CLPDescription('Source Root directry', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
+    [CLPLongName('SourceRoot'), CLPDescription('Source Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property SourceRoot: string read FSourceRoot write FSourceRoot;
 
     [CLPLongName('FileNameFilter'), CLPDescription('Filter (like *.vbox) to take name for result', '<wild card>'), CLPDefault(''), CLPRequired]

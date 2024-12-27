@@ -103,7 +103,7 @@ begin
     Inc(FTaksStarted);
     LTasksStarted := FTaksStarted;
   finally
-    UnLock;
+    Unlock;
   end;
 
   WaitForSystemStatus(IfThen(LTasksStarted <= 1, 333, 10 * 666), 76.66, 76.66);
@@ -239,9 +239,8 @@ begin
 
     FTaskTotal := AItems.Count;
   finally
-    UnLock;
+    Unlock;
   end;
 end;
-
 
 end.

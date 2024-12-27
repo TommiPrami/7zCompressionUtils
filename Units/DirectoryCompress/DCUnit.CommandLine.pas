@@ -14,7 +14,7 @@ type
     FCoresToUse: Integer;
     FDestinationRoot: string;
   public
-    [CLPLongName('SourceRoot'), CLPDescription('Source Root directry', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
+    [CLPLongName('SourceRoot'), CLPDescription('Source Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property SourceRoot: string read FSourceRoot write FSourceRoot;
 
     [CLPLongName('FileNameFilter'), CLPDescription('Filter (like *.vbox) to take name for result', '<wild card>'), CLPDefault(''), CLPRequired]
@@ -26,7 +26,7 @@ type
     [CLPLongName('CoresToUse'), CLPDescription('In how many processes is used, scaled to 1..max cores', '<Integer>'), CLPDefault('4')]
     property CoresToUse: Integer read FCoresToUse write FCoresToUse;
 
-    [CLPLongName('DestinationRoot'), CLPDescription('Destination Root directry', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
+    [CLPLongName('DestinationRoot'), CLPDescription('Destination Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property DestinationRoot: string read FDestinationRoot write FDestinationRoot;
   end;
 
