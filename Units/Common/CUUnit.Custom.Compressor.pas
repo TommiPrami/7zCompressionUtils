@@ -14,7 +14,6 @@ type
     FTaskTotal: Integer;
     FRunningTasks: Boolean;
     procedure CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
-    procedure WriteCommandlinePrototype;
   strict protected
     FCompressorCommandLineOptions: TCustomCompressLineOptions;
     function Lock: Boolean; inline;
@@ -54,24 +53,6 @@ end;
 procedure TCustomCompressor7z.Unlock;
 begin
   FCriticalSection.Release;
-end;
-
-procedure TCustomCompressor7z.WriteCommandlinePrototype;
-{
-const
-  PROTOTYPE_INDENT = 3;
-  ITEM_PROTOTYPE = 'Item_1';
-var
-  LCommandLinePrototype: string;
-  LDestinationRooot: string; }
-begin
-  { TODO: Have to think how this could be doce without acual file system checks
-
-  PrepareItemForCompression(ITEM_PROTOTYPE, LDestinationRooot, LCommandLinePrototype);
-  LockingWriteLn('', PROTOTYPE_INDENT);
-  LockingWriteLn('Commandline prototype: ' + LCommandLinePrototype, PROTOTYPE_INDENT);
-  LockingWriteLn('', PROTOTYPE_INDENT);
-  }
 end;
 
 procedure TCustomCompressor7z.LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
@@ -143,8 +124,6 @@ procedure TCustomCompressor7z.Execute;
 var
   LItemsToBeCompressed: TStringList;
 begin
-  WriteCommandlinePrototype;
-
   LItemsToBeCompressed := TStringList.Create;
   try
     LItemsToBeCompressed.AddStrings(GetItemsToBeCompressed);

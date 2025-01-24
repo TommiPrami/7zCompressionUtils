@@ -200,6 +200,8 @@ end;
 
 function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
 begin
+  Result := '';
+
   var LFiles := TDirectory.GetFiles(IncludeTrailingPathDelimiter(ADirectory), AFileNameFilter, TSearchOption.soTopDirectoryOnly);
 
   for var LFileName in LFiles do
@@ -211,6 +213,8 @@ end;
 
 function GetLastDirectoryName(const ADirectory: string): string;
 begin
+  Result := '';
+
   var LDirectoryArray := ADirectory.Split(['\', '/']);
 
   for var LIndex := High(LDirectoryArray) downto Low(LDirectoryArray) do
