@@ -13,13 +13,14 @@ type
     FTaksStarted: Int64;
     FTaskTotal: Integer;
     FRunningTasks: Boolean;
-    procedure CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
+    function CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string): Boolean;
   strict protected
     FCompressorCommandLineOptions: TCustomCompressLineOptions;
     function Lock: Boolean; inline;
     procedure Unlock; inline;
     procedure FilterByDirectories(const AItems: TStringList);
     procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); virtual; abstract;
+    procedure AfterItemCompressed(const AFileName: string); virtual; abstract;
     function GetItemsToBeCompressed: TArray<string>; virtual; abstract;
     function GetDestinationItemName(const ACurrentItemName: string): string; virtual; abstract;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; virtual; abstract;
@@ -65,7 +66,7 @@ begin
   end;
 end;
 
-procedure TCustomCompressor7z.CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string);
+function TCustomCompressor7z.CompressItem(const ACurrentItem, ADestinationRoot, ACommandLine: string): Boolean;
 
   function GetItemOfMaxStr(const AItemIndex: Integer): string;
   begin
@@ -77,6 +78,8 @@ procedure TCustomCompressor7z.CompressItem(const ACurrentItem, ADestinationRoot,
 var
   LTasksStarted: Integer;
 begin
+  Result := False;
+
   if not Lock then
     Exit;
 
@@ -94,7 +97,18 @@ begin
 
 
   LockingWriteLn(GetItemOfMaxStr(LTasksStarted) + ' Executing: ' + ACurrentItem + '...', 2);
-  ExecuteAndWait(ACommandLine, fcpcIdle);
+
+  try
+    Result := ExecuteAndWait(ACommandLine, fcpcIdle) = 0;
+  except
+    on E: Exception do
+    begin
+      Result := False;
+
+      LockingWriteLn('Exception ' + E.ClassName + ' occurred, while compressing item ' + ACurrentItem.QuotedString('"')
+        + ' with message ' + E.Message.QuotedString('"'));
+    end;
+  end;
 end;
 
 constructor TCustomCompressor7z.Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
@@ -162,7 +176,12 @@ begin
             PrepareItemForCompression(LCurrentItem, LDestinationRoot, LCommandLine);
 
             if not LCommandLine.IsEmpty and not LDestinationRoot.IsEmpty  then
-              CompressItem(LCurrentItem, LDestinationRoot, LCommandLine)
+              if CompressItem(LCurrentItem, LDestinationRoot, LCommandLine) then
+                TThread.Synchronize(nil, procedure
+                  begin
+                    AfterItemCompressed(LCurrentItem);
+                  end
+                );
           end
         );
 

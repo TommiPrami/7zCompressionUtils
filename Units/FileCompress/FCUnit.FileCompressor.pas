@@ -9,6 +9,7 @@ type
   TFileCompress7z = class(TCustomCompressor7z)
   strict protected
     procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); override;
+    procedure AfterItemCompressed(const AFileName: string); override;
     function GetItemsToBeCompressed: TArray<string>; override;
     function GetDestinationItemName(const ACurrentItemName: string): string; override;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
@@ -36,6 +37,16 @@ end;
 function TFileCompress7z.GetDestinationItemName(const ACurrentItemName: string): string;
 begin
   Result := GetFileNameOnly(ACurrentItemName);
+end;
+
+procedure TFileCompress7z.AfterItemCompressed(const AFileName: string);
+begin
+  inherited;
+
+  if TFileCompressLineOptions(FCompressorCommandLineOptions).DeleteSourceItemWhenDone then
+    if FileExists(AFileName) then
+      if not DeleteFile(AFileName) then
+        LockingWriteLn('Could not delete source file ' + AFileName.QuotedString('"'));
 end;
 
 function TFileCompress7z.GetCoreCount: Integer;

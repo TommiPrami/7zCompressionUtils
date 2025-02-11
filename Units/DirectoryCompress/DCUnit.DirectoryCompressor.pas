@@ -9,6 +9,7 @@ type
   TDirectoryCompressor = class(TCustomCompressor7z)
   strict protected
     procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); override;
+    procedure AfterItemCompressed(const AFileName: string); override;
     function GetItemsToBeCompressed: TArray<string>; override;
     function GetDestinationItemName(const ACurrentItemName: string): string; override;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
@@ -37,6 +38,13 @@ function TDirectoryCompressor.GetDestinationItemName(const ACurrentItemName: str
 begin
   Result := GetFileNameOnly(GetFileNameWithFilter(IncludeTrailingPathDelimiter(ACurrentItemName),
     TDirectoryCompressLineOptions(FCompressorCommandLineOptions).FileNameFilter));
+end;
+
+procedure TDirectoryCompressor.AfterItemCompressed(const AFileName: string);
+begin
+  inherited;
+
+  // Nothing to do, so far
 end;
 
 function TDirectoryCompressor.GetCoreCount: Integer;

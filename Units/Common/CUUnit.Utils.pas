@@ -13,7 +13,7 @@ uses
   function TotalCpuUsagePercentage: Double;
   procedure ProcessMessages;
   procedure WaitForSystemStatus(const APreWaitMillisecs: Integer; const AMaxTotalCpuUsagePercentage, AMaxAValilableMemoryPercentage: Double);
-  procedure ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal);
+  function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal): Cardinal;
   function GetFileNameOnly(const AFilename: string): string;
   function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
   function GetLastDirectoryName(const ADirectory: string): string;
@@ -152,7 +152,7 @@ begin
   end;
 end;
 
-procedure ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal);
+function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal): Cardinal;
 var
   LStartupInfo: TStartupInfo;
   LProcessInformation: TProcessInformation;
@@ -160,6 +160,8 @@ var
   LExitCode: DWORD;
   LCreationFlags: DWORD;
 begin
+  Result := 0;
+
   LCommandLine := Trim(ACommandLine);
 
   FillChar(LStartupInfo, SizeOf(LStartupInfo), 0);
