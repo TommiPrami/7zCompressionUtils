@@ -15,6 +15,7 @@ type
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
     function GetCoreCount: Integer; override;
     function GetSourceRoot: string; override;
+    function ThrottleBySystemResources: Boolean; override;
   public
     // procedure Execute;
   end;
@@ -77,12 +78,17 @@ begin
   if Lock then
   try
     ACommandLine := EXE_7Z.QuotedString('"') + ' ' + 'a -r'
-      + GetCompressionCommandlineOptions(TDirectoryCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel) + '-v1000m '
+      + GetCompressionCommandlineOptions(TDirectoryCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel, 1024, 2)
       + '"' + ADestinationRoot + LDestinationItemName + '.7z" "'
       + IncludeTrailingPathDelimiter(ACurrentItemName) + '*.*' +  '"';
   finally
     Unlock
   end;
+end;
+
+function TDirectoryCompressor.ThrottleBySystemResources: Boolean;
+begin
+  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).ThrottleBySystemResources;
 end;
 
 end.

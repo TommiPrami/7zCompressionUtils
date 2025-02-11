@@ -13,17 +13,18 @@ uses
   function TotalCpuUsagePercentage: Double;
   procedure ProcessMessages;
   procedure WaitForSystemStatus(const APreWaitMillisecs: Integer; const AMaxTotalCpuUsagePercentage, AMaxAValilableMemoryPercentage: Double);
-  function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal): Cardinal;
+  function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal;
+    const AUsePerformanceCoresOnly: Boolean = True): Cardinal;
   function GetFileNameOnly(const AFilename: string): string;
   function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
   function GetLastDirectoryName(const ADirectory: string): string;
-  function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel): string;
+function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel; const AVolumeSizeInMb, ACores: Integer): string;
   function GetIntFormat(const AMaxItems: Integer): string;
 
 implementation
 
 uses
-  System.Types, System.Math, System.IOUtils;
+  System.Types, System.Math, System.IOUtils, Delphi.ProcessAffinity.Utils;
 
 const
   ABOVE_NORMAL_PRIORITY_CLASS = $00008000;
@@ -152,7 +153,8 @@ begin
   end;
 end;
 
-function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal): Cardinal;
+function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal;
+  const AUsePerformanceCoresOnly: Boolean = True): Cardinal;
 var
   LStartupInfo: TStartupInfo;
   LProcessInformation: TProcessInformation;
@@ -174,6 +176,12 @@ begin
   if CreateProcess(nil, PChar(LCommandLine), nil, nil, True, LCreationFlags, nil, nil, LStartupInfo,
     LProcessInformation) then
   try
+    if AUsePerformanceCoresOnly then
+      if not SetProcessAffinityMask(LProcessInformation.hProcess, GetPerformanceAffinityMask(LProcessInformation.hProcess)) then
+      begin
+        // Some logging here maybe
+      end;
+
     repeat
       Sleep(10);
 
@@ -228,16 +236,24 @@ begin
   end;
 end;
 
-function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel): string;
+function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel; const AVolumeSizeInMb, ACores: Integer): string;
 begin
   case ACompressionLevel of
     Store: Result := '-mx0';
-    Fastest: Result := '-mx1 -mmt=off';
-    Fast: Result := '-mx3 -mmt=off';
-    Normal: Result := '-mx5 -mmt=off';
-    Maximum: Result := '-mx7 -mmt=off';
-    Ultra: Result := '-mx9 -md384m -mfb128 -mmt=off';
+    Fastest: Result := '-mx1';
+    Fast: Result := '-mx3';
+    Normal: Result := '-mx5';
+    Maximum: Result := '-mx7';
+    Ultra: Result := '-mx9 -md384m -mfb128';
   end;
+
+  if ACores <= 1 then
+    Result := Result  + ' -mmt=off'
+  else
+    Result := Result  + ' -mmt' + ACores.ToString;
+
+  if AVolumeSizeInMb >= 1 then
+    Result := Result  + ' -v' + AVolumeSizeInMb.ToString + 'm';
 
   Result := ' ' + Result + ' ';
 end;

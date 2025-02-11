@@ -15,7 +15,8 @@ uses
   CUUnit.Types in 'Units\Common\CUUnit.Types.pas',
   CUUnit.Utils in 'Units\Common\CUUnit.Utils.pas',
   DCUnit.CommandLine in 'Units\DirectoryCompress\DCUnit.CommandLine.pas',
-  DCUnit.DirectoryCompressor in 'Units\DirectoryCompress\DCUnit.DirectoryCompressor.pas';
+  DCUnit.DirectoryCompressor in 'Units\DirectoryCompress\DCUnit.DirectoryCompressor.pas',
+  Delphi.ProcessAffinity.Utils in 'Units\Common\Delphi.ProcessAffinity.Utils.pas';
 
 // main program body
 var

@@ -12,7 +12,8 @@ uses
   CUUnit.Custom.Commandline in 'Units\Common\CUUnit.Custom.Commandline.pas',
   CUUnit.Custom.Compressor in 'Units\Common\CUUnit.Custom.Compressor.pas',
   FCUnit.CommandLine in 'Units\FileCompress\FCUnit.CommandLine.pas',
-  FCUnit.FileCompressor in 'Units\FileCompress\FCUnit.FileCompressor.pas';
+  FCUnit.FileCompressor in 'Units\FileCompress\FCUnit.FileCompressor.pas',
+  Delphi.ProcessAffinity.Utils in 'Units\Common\Delphi.ProcessAffinity.Utils.pas';
 
 var
   LFileCompress: TFileCompress7z;

@@ -4,7 +4,7 @@
         <ProjectVersion>20.2</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Console</AppType>
@@ -115,6 +115,7 @@
         <DCCReference Include="Units\Common\CUUnit.Custom.Compressor.pas"/>
         <DCCReference Include="Units\FileCompress\FCUnit.CommandLine.pas"/>
         <DCCReference Include="Units\FileCompress\FCUnit.FileCompressor.pas"/>
+        <DCCReference Include="Units\Common\Delphi.ProcessAffinity.Utils.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -157,6 +158,12 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="Win32\Debug\FileCompress7z.exe" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="Win32\Debug\FileCompress7z.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>FileCompress7z.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="Win32\Release\FileCompress7z.exe" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>FileCompress7z.exe</RemoteName>

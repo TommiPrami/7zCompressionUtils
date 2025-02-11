@@ -15,6 +15,7 @@ type
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
     function GetCoreCount: Integer; override;
     function GetSourceRoot: string; override;
+    function ThrottleBySystemResources: Boolean; override;
   public
   end;
 
@@ -78,12 +79,18 @@ begin
   // TODO: Should not need to lock here
   if Lock then
   try
-    ACommandLine := EXE_7Z + ' ' + 'a -mx9 -md1024m -mfb256 -mmt=off -v1000m "'
-      + IncludeTrailingPathDelimiter(ADestinationRoot) + LDestinationItemName + '.7z" '
+    ACommandLine := EXE_7Z + ' ' + 'a '
+      + GetCompressionCommandlineOptions(TFileCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel, 1024, 4)
+      + '"' + IncludeTrailingPathDelimiter(ADestinationRoot) + LDestinationItemName + '.7z" '
       + ACurrentItemName.QuotedString('"');
   finally
     Unlock
   end;
+end;
+
+function TFileCompress7z.ThrottleBySystemResources: Boolean;
+begin
+  Result := TFileCompressLineOptions(FCompressorCommandLineOptions).ThrottleBySystemResources;
 end;
 
 end.

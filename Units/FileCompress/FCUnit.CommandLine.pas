@@ -13,6 +13,7 @@ type
     FCompressionLevel: TCompressionLevel;
     FCoresToUse: Integer;
     FDeleteSourceItemWhenDone: Boolean;
+    FThrottleBySystemResources: Boolean;
   public
     [CLPLongName('SourceRoot'), CLPDescription('Source Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property SourceRoot: string read FSourceRoot write FSourceRoot;
@@ -28,6 +29,9 @@ type
 
     [CLPLongName('DeleteSourceItemWhenDone'), CLPDescription('Delete source file when done', '<Boolean>'), CLPDefault('False')]
     property DeleteSourceItemWhenDone: Boolean read FDeleteSourceItemWhenDone write FDeleteSourceItemWhenDone;
+
+    [CLPLongName('ThrottleBySystemResources'), CLPDescription('Throttle by System resources', '<Boolean>'), CLPDefault('False')]
+    property ThrottleBySystemResources: Boolean read FThrottleBySystemResources write FThrottleBySystemResources;
   end;
 
   function ParseCommandLine(const ACommandlineOptions: TFileCompressLineOptions): Boolean;

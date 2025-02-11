@@ -26,6 +26,7 @@ type
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; virtual; abstract;
     function GetSourceRoot: string; virtual; abstract;
     function GetCoreCount: Integer; virtual; abstract;
+    function ThrottleBySystemResources: Boolean; virtual; abstract;
   public
     constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
     destructor Destroy; override;
@@ -90,7 +91,8 @@ begin
     Unlock;
   end;
 
-  WaitForSystemStatus(IfThen(LTasksStarted <= 1, 333, 10 * 666), 76.66, 76.66);
+  if ThrottleBySystemResources then
+    WaitForSystemStatus(IfThen(LTasksStarted <= 1, 333, 10 * 666), 76.66, 76.66);
 
   if not DirectoryExists(ADestinationRoot) then
     ForceDirectories(ADestinationRoot);
@@ -99,7 +101,7 @@ begin
   LockingWriteLn(GetItemOfMaxStr(LTasksStarted) + ' Executing: ' + ACurrentItem + '...', 2);
 
   try
-    Result := ExecuteAndWait(ACommandLine, fcpcIdle) = 0;
+    Result := ExecuteAndWait(ACommandLine, fcpcIdle, True) = 0;
   except
     on E: Exception do
     begin

@@ -87,6 +87,7 @@
         <DCCReference Include="Units\Common\CUUnit.Utils.pas"/>
         <DCCReference Include="Units\DirectoryCompress\DCUnit.CommandLine.pas"/>
         <DCCReference Include="Units\DirectoryCompress\DCUnit.DirectoryCompressor.pas"/>
+        <DCCReference Include="Units\Common\Delphi.ProcessAffinity.Utils.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

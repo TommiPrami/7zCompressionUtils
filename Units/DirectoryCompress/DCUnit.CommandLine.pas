@@ -13,6 +13,7 @@ type
     FCompressionLevel: TCompressionLevel;
     FCoresToUse: Integer;
     FDestinationRoot: string;
+    FThrottleBySystemResources: Boolean;
   public
     [CLPLongName('SourceRoot'), CLPDescription('Source Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property SourceRoot: string read FSourceRoot write FSourceRoot;
@@ -28,6 +29,9 @@ type
 
     [CLPLongName('DestinationRoot'), CLPDescription('Destination Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property DestinationRoot: string read FDestinationRoot write FDestinationRoot;
+
+    [CLPLongName('ThrottleBySystemResources'), CLPDescription('Throttle by System resources', '<Boolean>'), CLPDefault('False')]
+    property ThrottleBySystemResources: Boolean read FThrottleBySystemResources write FThrottleBySystemResources;
   end;
 
   function ParseCommandLine(const ACommandlineOptions: TDirectoryCompressLineOptions): Boolean;
