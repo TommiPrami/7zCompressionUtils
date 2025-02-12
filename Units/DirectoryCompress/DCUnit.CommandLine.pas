@@ -3,7 +3,7 @@
 interface
 
 uses
-  Delphi.CommandLineParser, CUUnit.Custom.Commandline, CUUnit.Types, CUUnit.Utils;
+  CUUnit.Custom.Commandline, CUUnit.Types, CUUnit.Utils, Delphi.CommandLineParser;
 
 type
   TDirectoryCompressLineOptions = class(TCustomCompressLineOptions)

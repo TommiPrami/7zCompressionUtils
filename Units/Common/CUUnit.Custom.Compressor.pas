@@ -3,8 +3,7 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs, OtlParallel, OtlCommon, OtlCollections, OtlTask,
-  CUUnit.Custom.Commandline;
+  System.Classes, System.SyncObjs, CUUnit.Custom.Commandline, OtlCollections, OtlCommon, OtlParallel, OtlTask;
 
 type
   TCustomCompressor7z = class(TObject)
@@ -21,6 +20,7 @@ type
     procedure FilterByDirectories(const AItems: TStringList);
     procedure PrepareItemForCompression(const ACurrentItemName: string; var ADestinationRoot, ACommandLine: string); virtual; abstract;
     procedure AfterItemCompressed(const AFileName: string); virtual; abstract;
+    procedure WaitForTasks;
     function GetItemsToBeCompressed: TArray<string>; virtual; abstract;
     function GetDestinationItemName(const ACurrentItemName: string): string; virtual; abstract;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; virtual; abstract;
@@ -55,6 +55,28 @@ end;
 procedure TCustomCompressor7z.Unlock;
 begin
   FCriticalSection.Release;
+end;
+
+procedure TCustomCompressor7z.WaitForTasks;
+var
+  LTasksRunning: Boolean;
+begin
+  LTasksRunning := True;
+
+  while LTasksRunning do
+  begin
+    Sleep(200);
+    ProcessMessages;
+
+    if Lock then
+    try
+      LTasksRunning := FRunningTasks;
+    finally
+      Unlock;
+    end
+    else
+      LTasksRunning := False;
+  end;
 end;
 
 procedure TCustomCompressor7z.LockingWriteLn(const ALine: string; const AIndent: Integer = 0);
@@ -96,7 +118,6 @@ begin
 
   if not DirectoryExists(ADestinationRoot) then
     ForceDirectories(ADestinationRoot);
-
 
   LockingWriteLn(GetItemOfMaxStr(LTasksStarted) + ' Executing: ' + ACurrentItem + '...', 2);
 
@@ -179,27 +200,18 @@ begin
 
             if not LCommandLine.IsEmpty and not LDestinationRoot.IsEmpty  then
               if CompressItem(LCurrentItem, LDestinationRoot, LCommandLine) then
-                TThread.Synchronize(nil, procedure
-                  begin
-                    AfterItemCompressed(LCurrentItem);
-                  end
-                );
+              begin
+                if Lock then
+                try
+                  AfterItemCompressed(LCurrentItem);
+                finally
+                  Unlock;
+                end;
+              end;
           end
         );
 
-      while True do
-      begin
-        Sleep(200);
-        ProcessMessages;
-
-        if Lock then
-        try
-          if not FRunningTasks then
-            Break;
-        finally
-          Unlock;
-        end;
-      end;
+      WaitForTasks;
 
       LStopWatch.Stop;
       LockingWriteLn(' Elapsed time: ' + LStopWatch.Elapsed.ToString, 1);

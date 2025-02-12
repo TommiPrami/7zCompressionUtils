@@ -14,7 +14,9 @@ uses
   procedure ProcessMessages;
   procedure WaitForSystemStatus(const APreWaitMillisecs: Integer; const AMaxTotalCpuUsagePercentage, AMaxAValilableMemoryPercentage: Double);
   function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal;
-    const AUsePerformanceCoresOnly: Boolean = True): Cardinal;
+    const AUsePerformanceCoresOnly: Boolean = True): Cardinal; overload;
+  function ExecuteAndWait(const ACommandLine: string; var AErrorMessage: string; const APriorityClass: TFCPriorityClass = fcpcNormal;
+    const AUsePerformanceCoresOnly: Boolean = True): Cardinal; overload;
   function GetFileNameOnly(const AFilename: string): string;
   function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
   function GetLastDirectoryName(const ADirectory: string): string;
@@ -24,7 +26,7 @@ function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionL
 implementation
 
 uses
-  System.Types, System.Math, System.IOUtils, Delphi.ProcessAffinity.Utils;
+  System.IOUtils, System.Math, System.Types, Delphi.ProcessAffinity.Utils;
 
 const
   ABOVE_NORMAL_PRIORITY_CLASS = $00008000;
@@ -153,8 +155,8 @@ begin
   end;
 end;
 
-function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal;
-  const AUsePerformanceCoresOnly: Boolean = True): Cardinal;
+function ExecuteAndWait(const ACommandLine: string; var AErrorMessage: string;
+  const APriorityClass: TFCPriorityClass = fcpcNormal; const AUsePerformanceCoresOnly: Boolean = True): Cardinal;
 var
   LStartupInfo: TStartupInfo;
   LProcessInformation: TProcessInformation;
@@ -162,6 +164,7 @@ var
   LExitCode: DWORD;
   LCreationFlags: DWORD;
 begin
+  AErrorMessage := '';
   Result := 0;
 
   LCommandLine := Trim(ACommandLine);
@@ -173,14 +176,11 @@ begin
 
   LCreationFlags := PriorityClassToNumeric(APriorityClass) or CREATE_NEW_CONSOLE;
 
-  if CreateProcess(nil, PChar(LCommandLine), nil, nil, True, LCreationFlags, nil, nil, LStartupInfo,
-    LProcessInformation) then
+  if CreateProcess(nil, PChar(LCommandLine), nil, nil, True, LCreationFlags, nil, nil, LStartupInfo, LProcessInformation) then
   try
     if AUsePerformanceCoresOnly then
       if not SetProcessAffinityMask(LProcessInformation.hProcess, GetPerformanceAffinityMask(LProcessInformation.hProcess)) then
-      begin
-        // Some logging here maybe
-      end;
+        AErrorMessage := 'Could  not set process affinity mask';
 
     repeat
       Sleep(10);
@@ -195,6 +195,14 @@ begin
   end
   else
     RaiseLastOSError;
+end;
+
+function ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal;
+  const AUsePerformanceCoresOnly: Boolean = True): Cardinal;
+begin
+  var LErrorMessage: string;
+
+  Result := ExecuteAndWait(ACommandLine, LErrorMessage, APriorityClass, AUsePerformanceCoresOnly);
 end;
 
 function GetFileNameOnly(const AFilename: string): string;
@@ -244,7 +252,7 @@ begin
     Fast: Result := '-mx3';
     Normal: Result := '-mx5';
     Maximum: Result := '-mx7';
-    Ultra: Result := '-mx9 -md384m -mfb128';
+    Ultra: Result := '-mx9 -md512m -mfb128';
   end;
 
   if ACores <= 1 then

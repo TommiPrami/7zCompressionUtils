@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs, System.IOUtils, FCUnit.CommandLine, CUUnit.Custom.Compressor;
+  System.Classes, System.IOUtils, System.SyncObjs, CUUnit.Custom.Compressor, FCUnit.CommandLine;
 
 type
   TFileCompress7z = class(TCustomCompressor7z)
