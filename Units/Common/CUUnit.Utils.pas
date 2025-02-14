@@ -20,7 +20,7 @@ uses
   function GetFileNameOnly(const AFilename: string): string;
   function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
   function GetLastDirectoryName(const ADirectory: string): string;
-function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel; const AVolumeSizeInMb, ACores: Integer): string;
+  function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel; const AVolumeSizeInMb, ACores: Integer): string;
   function GetIntFormat(const AMaxItems: Integer): string;
 
 implementation
@@ -252,7 +252,9 @@ begin
     Fast: Result := '-mx3';
     Normal: Result := '-mx5';
     Maximum: Result := '-mx7';
-    Ultra: Result := '-mx9 -md512m -mfb128';
+    Ultra: Result := '-mx9';
+    UltraCreamDeluxe: Result := '-mx9 -md512m -mfb128';
+    UltraCreamDeluxe2: Result := '-mx9 -md1024m -mfb128';
   end;
 
   if ACores <= 1 then

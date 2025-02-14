@@ -21,7 +21,7 @@ type
     [CLPLongName('FileNameFilter'), CLPDescription('Filter (like *.vbox) to take name for result', '<wild card>'), CLPDefault(''), CLPRequired]
     property FileNameFilter: string read FFileNameFilter write FFileNameFilter;
 
-    [CLPLongName('CompressionLevel'), CLPDescription('Compression Level', '<Store, Fastest, Fast, Normal, Maximum, Ultra>'), CLPDefault('Ultra')]
+    [CLPLongName('CompressionLevel'), CLPDescription('Compression Level', '<Store, Fastest, Fast, Normal, Maximum, Ultra, UltraCreamDeluxe, UltraCreamDeluxe2>'), CLPDefault('UltraCreamDeluxe')]
     property CompressionLevel: TCompressionLevel read FCompressionLevel write FCompressionLevel;
 
     [CLPLongName('CoresToUse'), CLPDescription('In how many processes is used, scaled to 1..max cores', '<Integer>'), CLPDefault('1')]
