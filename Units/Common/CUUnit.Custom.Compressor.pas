@@ -3,7 +3,8 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs, CUUnit.Custom.Commandline, OtlCollections, OtlCommon, OtlParallel, OtlTask;
+  System.Classes, System.SyncObjs, CUUnit.Custom.Commandline, OtlCollections, OtlCommon, OtlParallel, OtlTask,
+  CUUnit.Types;
 
 type
   TCustomCompressor7z = class(TObject)
@@ -25,7 +26,9 @@ type
     function GetDestinationItemName(const ACurrentItemName: string): string; virtual; abstract;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; virtual; abstract;
     function GetSourceRoot: string; virtual; abstract;
+    function GetCompressionLevel: TCompressionLevel; virtual; abstract;
     function GetCoreCount: Integer; virtual; abstract;
+    function GetVolumeSizeMB: Integer; virtual; abstract;
     function ThrottleBySystemResources: Boolean; virtual; abstract;
   public
     constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
@@ -38,7 +41,7 @@ type
 implementation
 
 uses
-  System.Diagnostics, System.Math, System.SysUtils, CUUnit.Types, CUUnit.Utils;
+  System.Diagnostics, System.Math, System.SysUtils, CUUnit.Utils;
 
 function TCustomCompressor7z.Lock: Boolean;
 begin

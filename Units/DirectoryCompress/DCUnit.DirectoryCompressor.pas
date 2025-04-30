@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs, System.IOUtils, DCUnit.CommandLine, CUUnit.Custom.Compressor;
+  System.Classes, System.SyncObjs, System.IOUtils, DCUnit.CommandLine, CUUnit.Custom.Compressor, CUUnit.Types;
 
 type
   TDirectoryCompressor = class(TCustomCompressor7z)
@@ -13,7 +13,9 @@ type
     function GetItemsToBeCompressed: TArray<string>; override;
     function GetDestinationItemName(const ACurrentItemName: string): string; override;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
+    function GetCompressionLevel: TCompressionLevel; override;
     function GetCoreCount: Integer; override;
+    function GetVolumeSizeMB: Integer; override;
     function GetSourceRoot: string; override;
     function ThrottleBySystemResources: Boolean; override;
   public
@@ -23,7 +25,7 @@ type
 implementation
 
 uses
-  Winapi.Windows, System.Math, System.SysUtils, CUUnit.Types, CUUnit.Utils;
+  Winapi.Windows, System.Math, System.SysUtils, CUUnit.Utils;
 
 function TDirectoryCompressor.GetItemsToBeCompressed: TArray<string>;
 begin
@@ -33,6 +35,11 @@ end;
 function TDirectoryCompressor.GetSourceRoot: string;
 begin
   Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).SourceRoot;
+end;
+
+function TDirectoryCompressor.GetVolumeSizeMB: Integer;
+begin
+  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).VolumeSize;
 end;
 
 function TDirectoryCompressor.GetDestinationItemName(const ACurrentItemName: string): string;
@@ -46,6 +53,11 @@ begin
   inherited;
 
   // Nothing to do, so far
+end;
+
+function TDirectoryCompressor.GetCompressionLevel: TCompressionLevel;
+begin
+  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel;
 end;
 
 function TDirectoryCompressor.GetCoreCount: Integer;
@@ -78,7 +90,7 @@ begin
   if Lock then
   try
     ACommandLine := EXE_7Z.QuotedString('"') + ' ' + 'a -r'
-      + GetCompressionCommandlineOptions(TDirectoryCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel, 1024, 2)
+      + GetCompressionCommandlineOptions(GetCompressionLevel, GetVolumeSizeMB, GetCoreCount)
       + '"' + ADestinationRoot + LDestinationItemName + '.7z" "'
       + IncludeTrailingPathDelimiter(ACurrentItemName) + '*.*' +  '"';
   finally

@@ -18,7 +18,7 @@ uses
 var
   LFileCompress: TFileCompress7z;
 begin
-  var LCommandLineOptions := TFileCompressLineOptions.Create;
+  var LCommandLineOptions := TFileCompressOptions.Create;
   try
     if not ParseCommandLine(LCommandLineOptions) then
     begin

@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.IOUtils, System.SyncObjs, CUUnit.Custom.Compressor, FCUnit.CommandLine;
+  System.Classes, System.IOUtils, System.SyncObjs, CUUnit.Custom.Compressor, FCUnit.CommandLine, CUUnit.Types;
 
 type
   TFileCompress7z = class(TCustomCompressor7z)
@@ -13,7 +13,9 @@ type
     function GetItemsToBeCompressed: TArray<string>; override;
     function GetDestinationItemName(const ACurrentItemName: string): string; override;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
+    function GetCompressionLevel: TCompressionLevel; override;
     function GetCoreCount: Integer; override;
+    function GetVolumeSizeMB: Integer; override;
     function GetSourceRoot: string; override;
     function ThrottleBySystemResources: Boolean; override;
   public
@@ -22,17 +24,22 @@ type
 implementation
 
 uses
-  System.Diagnostics, System.Math, System.SysUtils, CUUnit.Types, CUUnit.Utils;
+  System.Diagnostics, System.Math, System.SysUtils, CUUnit.Utils;
 
 function TFileCompress7z.GetItemsToBeCompressed: TArray<string>;
 begin
-  Result := TDirectory.GetFiles(TFileCompressLineOptions(FCompressorCommandLineOptions).SourceRoot,
-    TFileCompressLineOptions(FCompressorCommandLineOptions).FileNameFilter, TSearchOption.soTopDirectoryOnly);
+  Result := TDirectory.GetFiles(TFileCompressOptions(FCompressorCommandLineOptions).SourceRoot,
+    TFileCompressOptions(FCompressorCommandLineOptions).FileNameFilter, TSearchOption.soTopDirectoryOnly);
 end;
 
 function TFileCompress7z.GetSourceRoot: string;
 begin
-  Result := TFileCompressLineOptions(FCompressorCommandLineOptions).SourceRoot;
+  Result := TFileCompressOptions(FCompressorCommandLineOptions).SourceRoot;
+end;
+
+function TFileCompress7z.GetVolumeSizeMB: Integer;
+begin
+  Result := TFileCompressOptions(FCompressorCommandLineOptions).VolumeSize;
 end;
 
 function TFileCompress7z.GetDestinationItemName(const ACurrentItemName: string): string;
@@ -44,15 +51,20 @@ procedure TFileCompress7z.AfterItemCompressed(const AFileName: string);
 begin
   inherited;
 
-  if TFileCompressLineOptions(FCompressorCommandLineOptions).DeleteSourceItemWhenDone then
+  if TFileCompressOptions(FCompressorCommandLineOptions).DeleteSourceItemWhenDone then
     if FileExists(AFileName) then
       if not DeleteFile(AFileName) then
         LockingWriteLn('Could not delete source file ' + AFileName.QuotedString('"'));
 end;
 
+function TFileCompress7z.GetCompressionLevel: TCompressionLevel;
+begin
+  Result := TFileCompressOptions(FCompressorCommandLineOptions).CompressionLevel;
+end;
+
 function TFileCompress7z.GetCoreCount: Integer;
 begin
-  Result := ScaleCoreCount(TFileCompressLineOptions(FCompressorCommandLineOptions).CoresToUse)
+  Result := ScaleCoreCount(TFileCompressOptions(FCompressorCommandLineOptions).CoresToUse);
 end;
 
 function TFileCompress7z.GetDestinationDirectory(const ACurrentDestinationItemName: string): string;
@@ -80,7 +92,7 @@ begin
   if Lock then
   try
     ACommandLine := EXE_7Z + ' ' + 'a '
-      + GetCompressionCommandlineOptions(TFileCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel, 1024, 4)
+      + GetCompressionCommandlineOptions(GetCompressionLevel, GetVolumeSizeMB, GetCoreCount)
       + '"' + IncludeTrailingPathDelimiter(ADestinationRoot) + LDestinationItemName + '.7z" '
       + ACurrentItemName.QuotedString('"');
   finally
@@ -90,7 +102,7 @@ end;
 
 function TFileCompress7z.ThrottleBySystemResources: Boolean;
 begin
-  Result := TFileCompressLineOptions(FCompressorCommandLineOptions).ThrottleBySystemResources;
+  Result := TFileCompressOptions(FCompressorCommandLineOptions).ThrottleBySystemResources;
 end;
 
 end.

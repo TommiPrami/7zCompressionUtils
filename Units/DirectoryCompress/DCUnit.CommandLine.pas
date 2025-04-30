@@ -12,6 +12,7 @@ type
     FFileNameFilter: string;
     FCompressionLevel: TCompressionLevel;
     FCoresToUse: Integer;
+    FVolumeSize: Integer;
     FDestinationRoot: string;
     FThrottleBySystemResources: Boolean;
   public
@@ -24,8 +25,11 @@ type
     [CLPLongName('CompressionLevel'), CLPDescription('Compression Level', '<Store, Fastest, Fast, Normal, Maximum, Ultra, UltraCreamDeluxe, UltraCreamDeluxe2>'), CLPDefault('UltraCreamDeluxe2')]
     property CompressionLevel: TCompressionLevel read FCompressionLevel write FCompressionLevel;
 
-    [CLPLongName('CoresToUse'), CLPDescription('In how many processes is used, scaled to 1..max cores', '<Integer>'), CLPDefault('4')]
+    [CLPLongName('CoresToUse'), CLPDescription('In how many processes is used, scaled to 1..max cores', '<Integer>'), CLPDefault('1')]
     property CoresToUse: Integer read FCoresToUse write FCoresToUse;
+
+    [CLPLongName('VolumeSize'), CLPDescription('Compression VolumeSize size in megobytes', '<Integer>'), CLPDefault('4096')]
+    property VolumeSize: Integer read FVolumeSize write FVolumeSize;
 
     [CLPLongName('DestinationRoot'), CLPDescription('Destination Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property DestinationRoot: string read FDestinationRoot write FDestinationRoot;
