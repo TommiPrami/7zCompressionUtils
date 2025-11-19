@@ -145,10 +145,10 @@ begin
     Sleep(SLEEP_TIME);
 
  { TODO: This potentiaally can hang the whole app, so not too smart :) But let's see does it help or not
-         in GUI app wold nice to have some global Shit-down flag, but in command line app it might we
+         in GUI app would nice to have some global Shit-down flag, but in command line app it might we
          futile, because no way to terminate anyhow... Maybe, have to see... I think there could be way to do it.
          Like old DOS-apps had ctrl+c/ctrl+x termination }
- while ((TotalCpuUsagePercentage > AMaxTotalCpuUsagePercentage)
+  while ((TotalCpuUsagePercentage > AMaxTotalCpuUsagePercentage)
     or (GetAvailableMemoryPercentage > AMaxAValilableMemoryPercentage)) do
   begin
     Sleep(SLEEP_TIME);
