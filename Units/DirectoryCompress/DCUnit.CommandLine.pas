@@ -15,6 +15,7 @@ type
     FVolumeSize: Integer;
     FDestinationRoot: string;
     FThrottleBySystemResources: Boolean;
+    FDeleteFilesFromDestination: Boolean;
   public
     [CLPLongName('SourceRoot'), CLPDescription('Source Root directory', '<directory>'), CLPDefault(''), CLPRequired, CLPDirectoryMustExist]
     property SourceRoot: string read FSourceRoot write FSourceRoot;
@@ -36,6 +37,9 @@ type
 
     [CLPLongName('ThrottleBySystemResources'), CLPDescription('Throttle by System resources', '<Boolean>'), CLPDefault('False')]
     property ThrottleBySystemResources: Boolean read FThrottleBySystemResources write FThrottleBySystemResources;
+
+    [CLPLongName('DeleteFilesFromDestination'), CLPDescription('If destination folder has files, can those be deleted.', '<Boolean>'), CLPDefault('False')]
+    property DeleteFilesFromDestination: Boolean read FDeleteFilesFromDestination write FDeleteFilesFromDestination;
   end;
 
   function ParseCommandLine(const ACommandlineOptions: TDirectoryCompressLineOptions): Boolean;

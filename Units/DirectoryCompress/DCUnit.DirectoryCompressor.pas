@@ -18,6 +18,7 @@ type
     function GetVolumeSizeMB: Integer; override;
     function GetSourceRoot: string; override;
     function ThrottleBySystemResources: Boolean; override;
+    function DeleteFilesFromDestination: Boolean; override;
   public
     // procedure Execute;
   end;
@@ -53,6 +54,11 @@ begin
   inherited;
 
   // Nothing to do, so far
+end;
+
+function TDirectoryCompressor.DeleteFilesFromDestination: Boolean;
+begin
+  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).DeleteFilesFromDestination;
 end;
 
 function TDirectoryCompressor.GetCompressionLevel: TCompressionLevel;

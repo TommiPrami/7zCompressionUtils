@@ -3,7 +3,7 @@
 interface
 
 uses
-  Winapi.Messages, Winapi.Windows, System.Diagnostics, System.SysUtils, CUUnit.Types;
+  Winapi.Messages, Winapi.Windows, System.Classes, System.Diagnostics, System.SysUtils, CUUnit.Types;
 
   function DirEmpty(const ADirectory: string): Boolean;
   function FileTimeToInt64(const FileTime: TFileTime): Int64;
@@ -22,6 +22,8 @@ uses
   function GetLastDirectoryName(const ADirectory: string): string;
   function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel; const AVolumeSizeInMb, ACores: Integer): string;
   function GetIntFormat(const AMaxItems: Integer): string;
+  procedure GetFilesInDirectory(const ADirectory: string; const AFileList: TStringList);
+  function DeleteFilesFromDirectory(const ADirectory: string): Boolean;
 
 implementation
 
@@ -285,6 +287,69 @@ end;
 function GetIntFormat(const AMaxItems: Integer): string;
 begin
   Result := '%.' + GetDigitCount(AMaxItems).ToString + 'd';
+end;
+
+procedure GetFilesInDirectory(const ADirectory: string; const AFileList: TStringList);
+var
+  LSearchRec: TSearchRec;
+  LFilePath: string;
+begin
+  AFileList.Clear;
+
+  // If directory doesn't exist, return empty list
+  if not DirectoryExists(ADirectory) then
+    Exit;
+
+  // Search for files only (not directories)
+  if FindFirst(IncludeTrailingPathDelimiter(ADirectory) + '*.*', faAnyFile, LSearchRec) = 0 then
+  begin
+    try
+      repeat
+        // Skip directories (including '.' and '..')
+        if (LSearchRec.Attr and faDirectory) = 0 then
+        begin
+          LFilePath := IncludeTrailingPathDelimiter(ADirectory) + LSearchRec.Name;
+          AFileList.Add(LFilePath);
+        end;
+      until FindNext(LSearchRec) <> 0;
+    finally
+      FindClose(LSearchRec);
+    end;
+  end;
+end;
+
+function DeleteFilesFromDirectory(const ADirectory: string): Boolean;
+var
+  LFileList: TStringList;
+  LIndex: Integer;
+begin
+  Result := True;
+
+  // If directory doesn't exist, return True
+  if not DirectoryExists(ADirectory) then
+    Exit;
+
+  LFileList := TStringList.Create;
+  try
+    // Get all files in the directory
+    GetFilesInDirectory(ADirectory, LFileList);
+
+    // Try to delete each file
+    for LIndex := 0 to LFileList.Count - 1 do
+    begin
+      if not DeleteFile(LFileList[LIndex]) then
+        Result := False; // At least one file couldn't be deleted
+    end;
+
+    // If deletion seemed successful, verify no files remain
+    if Result then
+    begin
+      GetFilesInDirectory(ADirectory, LFileList);
+      Result := (LFileList.Count = 0);
+    end;
+  finally
+    LFileList.Free;
+  end;
 end;
 
 initialization

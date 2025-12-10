@@ -18,6 +18,7 @@ type
     function GetVolumeSizeMB: Integer; override;
     function GetSourceRoot: string; override;
     function ThrottleBySystemResources: Boolean; override;
+    function DeleteFilesFromDestination: Boolean; override;
   public
   end;
 
@@ -55,6 +56,11 @@ begin
     if FileExists(AFileName) then
       if not DeleteFile(AFileName) then
         LockingWriteLn('Could not delete source file ' + AFileName.QuotedString('"'));
+end;
+
+function TFileCompress7z.DeleteFilesFromDestination: Boolean;
+begin
+  Result := TFileCompressOptions(FCompressorCommandLineOptions).DeleteFilesFromDestination;
 end;
 
 function TFileCompress7z.GetCompressionLevel: TCompressionLevel;

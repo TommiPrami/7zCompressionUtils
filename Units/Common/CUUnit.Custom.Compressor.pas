@@ -3,8 +3,8 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs, CUUnit.Custom.Commandline, OtlCollections, OtlCommon, OtlParallel, OtlTask,
-  CUUnit.Types;
+  System.Classes, System.SyncObjs, CUUnit.Custom.Commandline, CUUnit.Types, OtlCollections, OtlCommon, OtlParallel,
+  OtlTask;
 
 type
   TCustomCompressor7z = class(TObject)
@@ -30,6 +30,7 @@ type
     function GetCoreCount: Integer; virtual; abstract;
     function GetVolumeSizeMB: Integer; virtual; abstract;
     function ThrottleBySystemResources: Boolean; virtual; abstract;
+    function DeleteFilesFromDestination: Boolean; virtual; abstract;
   public
     constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
     destructor Destroy; override;
@@ -41,7 +42,7 @@ type
 implementation
 
 uses
-  System.Diagnostics, System.Math, System.SysUtils, CUUnit.Utils;
+  System.Diagnostics, System.IOUtils, System.Math, System.SysUtils, CUUnit.Utils;
 
 function TCustomCompressor7z.Lock: Boolean;
 begin
@@ -247,6 +248,10 @@ begin
 
       if not DirEmpty(LDestinationDir) then
       begin
+        if DeleteFilesFromDestination then
+          if DeleteFilesFromDirectory(LDestinationDir) then
+            Continue;
+
         LockingWriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'), 3);
         AItems.Delete(LIndex);
       end;
