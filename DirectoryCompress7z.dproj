@@ -3,7 +3,7 @@
         <ProjectGuid>{409A119A-3372-4FB6-A7D1-1730EBB7BB16}</ProjectGuid>
         <MainSource>DirectoryCompress7z.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <ProjectName Condition="'$(ProjectName)'==''">DirectoryCompress7z</ProjectName>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Console</AppType>
