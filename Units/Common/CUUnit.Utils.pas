@@ -256,7 +256,7 @@ begin
     Maximum: Result := '-mx7';
     Ultra: Result := '-mx9';
     UltraDeluxe: Result := '-mx9 -md768m -mfb128';
-    UltraCreamDeluxe: Result := '-mx9 -md2048m -mfb128';
+    UltraCreamDeluxe: Result := '-mx9 -md2560m -mfb192';
   end;
 
   if ACores <= 1 then
