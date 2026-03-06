@@ -28,6 +28,7 @@ type
     function GetSourceRoot: string; virtual; abstract;
     function GetCompressionLevel: TCompressionLevel; virtual; abstract;
     function GetCoreCount: Integer; virtual; abstract;
+    function GetParallelCompressorCount: Integer; virtual; abstract;
     function GetVolumeSizeMB: Integer; virtual; abstract;
     function ThrottleBySystemResources: Boolean; virtual; abstract;
     function DeleteFilesFromDestination: Boolean; virtual; abstract;
@@ -147,10 +148,10 @@ begin
 
   { Need one or more calls to stabilize, it seems... one round could be enough, hard to say
     So we warm CPU usage code up }
-  for var LIndex := 1 to 3 do
+  for var LIndex := 1 to 9 do
   begin
     TotalCpuUsagePercentage;
-    Sleep(Random(42));
+    Sleep(Random(42 * 2));
   end;
 end;
 
@@ -178,7 +179,7 @@ begin
       FRunningTasks := True;
 
       Parallel.ForEach(LItemsToBeCompressed)
-        .NumTasks(GetCoreCount)
+        .NumTasks(GetParallelCompressorCount)
         .OnStop(
           procedure
           begin

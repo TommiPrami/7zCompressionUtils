@@ -12,6 +12,7 @@ type
     FFileNameFilter: string;
     FCompressionLevel: TCompressionLevel;
     FCoresToUse: Integer;
+    FParallelCompressorCount: Integer;
     FVolumeSize: Integer;
     FDestinationRoot: string;
     FThrottleBySystemResources: Boolean;
@@ -28,6 +29,9 @@ type
 
     [CLPLongName('CoresToUse'), CLPDescription('In how many processes is used, scaled to 1..max cores', '<Integer>'), CLPDefault('1')]
     property CoresToUse: Integer read FCoresToUse write FCoresToUse;
+
+    [CLPLongName('ParallelCompressorCount'), CLPDescription('In how many processes is used, scaled to 1..max cores', '<Integer>'), CLPDefault('1')]
+    property ParallelCompressorCount: Integer read FParallelCompressorCount write FParallelCompressorCount;
 
     [CLPLongName('VolumeSize'), CLPDescription('Compression VolumeSize size in megobytes', '<Integer>'), CLPDefault('4096')]
     property VolumeSize: Integer read FVolumeSize write FVolumeSize;

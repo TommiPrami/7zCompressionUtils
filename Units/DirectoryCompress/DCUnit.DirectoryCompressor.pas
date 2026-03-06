@@ -15,6 +15,7 @@ type
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
     function GetCompressionLevel: TCompressionLevel; override;
     function GetCoreCount: Integer; override;
+    function GetParallelCompressorCount: Integer; override;
     function GetVolumeSizeMB: Integer; override;
     function GetSourceRoot: string; override;
     function ThrottleBySystemResources: Boolean; override;
@@ -31,6 +32,11 @@ uses
 function TDirectoryCompressor.GetItemsToBeCompressed: TArray<string>;
 begin
   Result := TDirectory.GetDirectories(GetSourceRoot, '*.*', TSearchOption.soTopDirectoryOnly);
+end;
+
+function TDirectoryCompressor.GetParallelCompressorCount: Integer;
+begin
+  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).ParallelCompressorCount;
 end;
 
 function TDirectoryCompressor.GetSourceRoot: string;
