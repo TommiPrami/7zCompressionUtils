@@ -13,13 +13,6 @@ type
     function GetItemsToBeCompressed: TArray<string>; override;
     function GetDestinationItemName(const ACurrentItemName: string): string; override;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; override;
-    function GetCompressionLevel: TCompressionLevel; override;
-    function GetCoreCount: Integer; override;
-    function GetParallelCompressorCount: Integer; override;
-    function GetVolumeSizeMB: Integer; override;
-    function GetSourceRoot: string; override;
-    function ThrottleBySystemResources: Boolean; override;
-    function DeleteFilesFromDestination: Boolean; override;
   public
     // procedure Execute;
   end;
@@ -31,28 +24,13 @@ uses
 
 function TDirectoryCompressor.GetItemsToBeCompressed: TArray<string>;
 begin
-  Result := TDirectory.GetDirectories(GetSourceRoot, '*.*', TSearchOption.soTopDirectoryOnly);
-end;
-
-function TDirectoryCompressor.GetParallelCompressorCount: Integer;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).ParallelCompressorCount;
-end;
-
-function TDirectoryCompressor.GetSourceRoot: string;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).SourceRoot;
-end;
-
-function TDirectoryCompressor.GetVolumeSizeMB: Integer;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).VolumeSize;
+  Result := TDirectory.GetDirectories(FCompressorCommandLineOptions.SourceRoot, '*.*', TSearchOption.soTopDirectoryOnly);
 end;
 
 function TDirectoryCompressor.GetDestinationItemName(const ACurrentItemName: string): string;
 begin
   Result := GetFileNameOnly(GetFileNameWithFilter(IncludeTrailingPathDelimiter(ACurrentItemName),
-    TDirectoryCompressLineOptions(FCompressorCommandLineOptions).FileNameFilter));
+    FCompressorCommandLineOptions.FileNameFilter));
 end;
 
 procedure TDirectoryCompressor.AfterItemCompressed(const AFileName: string);
@@ -60,21 +38,6 @@ begin
   inherited;
 
   // Nothing to do, so far
-end;
-
-function TDirectoryCompressor.DeleteFilesFromDestination: Boolean;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).DeleteFilesFromDestination;
-end;
-
-function TDirectoryCompressor.GetCompressionLevel: TCompressionLevel;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).CompressionLevel;
-end;
-
-function TDirectoryCompressor.GetCoreCount: Integer;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).CoresToUse;
 end;
 
 function TDirectoryCompressor.GetDestinationDirectory(const ACurrentDestinationItemName: string): string;
@@ -102,7 +65,8 @@ begin
   if Lock then
   try
     ACommandLine := EXE_7Z.QuotedString('"') + ' ' + 'a -r'
-      + GetCompressionCommandlineOptions(GetCompressionLevel, GetVolumeSizeMB, GetCoreCount)
+      + GetCompressionCommandlineOptions(FCompressorCommandLineOptions.CompressionLevel, FCompressorCommandLineOptions.VolumeSize,
+        FCompressorCommandLineOptions.CoresToUse)
       + '"' + ADestinationRoot + LDestinationItemName + '.7z" "'
       + IncludeTrailingPathDelimiter(ACurrentItemName) + '*.*' +  '"';
   finally
@@ -110,9 +74,5 @@ begin
   end;
 end;
 
-function TDirectoryCompressor.ThrottleBySystemResources: Boolean;
-begin
-  Result := TDirectoryCompressLineOptions(FCompressorCommandLineOptions).ThrottleBySystemResources;
-end;
 
 end.

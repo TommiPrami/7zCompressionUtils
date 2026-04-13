@@ -25,13 +25,6 @@ type
     function GetItemsToBeCompressed: TArray<string>; virtual; abstract;
     function GetDestinationItemName(const ACurrentItemName: string): string; virtual; abstract;
     function GetDestinationDirectory(const ACurrentDestinationItemName: string): string; virtual; abstract;
-    function GetSourceRoot: string; virtual; abstract;
-    function GetCompressionLevel: TCompressionLevel; virtual; abstract;
-    function GetCoreCount: Integer; virtual; abstract;
-    function GetParallelCompressorCount: Integer; virtual; abstract;
-    function GetVolumeSizeMB: Integer; virtual; abstract;
-    function ThrottleBySystemResources: Boolean; virtual; abstract;
-    function DeleteFilesFromDestination: Boolean; virtual; abstract;
   public
     constructor Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
     destructor Destroy; override;
@@ -118,7 +111,7 @@ begin
     Unlock;
   end;
 
-  if ThrottleBySystemResources then
+  if FCompressorCommandLineOptions.ThrottleBySystemResources then
     WaitForSystemStatus(IfThen(LTasksStarted <= 1, 333, 10 * 666), 76.66, 76.66);
 
   if not DirectoryExists(ADestinationRoot) then
@@ -140,6 +133,8 @@ begin
 end;
 
 constructor TCustomCompressor7z.Create(const ACompressorCommandLineOptions: TCustomCompressLineOptions);
+var
+  LIndex: Integer;
 begin
   inherited Create;
 
@@ -148,10 +143,15 @@ begin
 
   { Need one or more calls to stabilize, it seems... one round could be enough, hard to say
     So we warm CPU usage code up }
-  for var LIndex := 1 to 9 do
+  // TODO: This should be done at background, in separate thread, so if there is nothing to do, it would not waist total time used.
+  LIndex := 1;
+
+  while LIndex <= 18 do
   begin
     TotalCpuUsagePercentage;
+
     Sleep(Random(42 * 2));
+    Inc(LIndex);
   end;
 end;
 
@@ -179,7 +179,7 @@ begin
       FRunningTasks := True;
 
       Parallel.ForEach(LItemsToBeCompressed)
-        .NumTasks(GetParallelCompressorCount)
+        .NumTasks(FCompressorCommandLineOptions.ParallelCompressorCount)
         .OnStop(
           procedure
           begin
@@ -223,7 +223,7 @@ begin
     end
     else
     begin
-      LockingWriteLn('Nothing to compress was found from directory ' + GetSourceRoot.QuotedString('"') , 3);
+      LockingWriteLn('Nothing to compress was found from directory ' + FCompressorCommandLineOptions.SourceRoot.QuotedString('"') , 3);
 
       Exit;
     end;
@@ -249,7 +249,7 @@ begin
 
       if not DirEmpty(LDestinationDir) then
       begin
-        if DeleteFilesFromDestination then
+        if FCompressorCommandLineOptions.DeleteFilesFromDestination then
           if DeleteFilesFromDirectory(LDestinationDir) then
             Continue;
 
