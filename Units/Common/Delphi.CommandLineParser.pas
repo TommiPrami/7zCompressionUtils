@@ -715,7 +715,7 @@ end;
 ///
 ///   Each switch attribute must have a long or short name. (That is actually enforced in
 ///   in the current implementation as long name is set to property name by default,
-///   but the test is still left in for future proofing.)
+///   but the test is still left in for future-proofing.)
 ///
 ///   Short names (when provided) must be one letter long.
 ///
