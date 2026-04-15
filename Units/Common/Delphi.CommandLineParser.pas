@@ -708,7 +708,7 @@ end;
 ///    Verifies attribute consistency.
 ///
 ///   For positional attributes there must be no 'holes' (i.e. positional attributes must
-///   be numbere 1,2,...N) and there must be no 'required' attributes after 'optional'
+///   be numbered 1,2,...N) and there must be no 'required' attributes after 'optional'
 ///   attributes.
 ///
 ///   There must be at most one 'Rest' positional attribute.
