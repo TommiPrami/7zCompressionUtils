@@ -71,7 +71,7 @@ begin
       + '"' + IncludeTrailingPathDelimiter(ADestinationRoot) + LDestinationItemName + '.7z" '
       + ACurrentItemName.QuotedString('"');
   finally
-    Unlock
+    Unlock;
   end;
 end;
 

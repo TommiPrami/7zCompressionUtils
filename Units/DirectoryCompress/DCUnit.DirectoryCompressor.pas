@@ -70,7 +70,7 @@ begin
       + '"' + ADestinationRoot + LDestinationItemName + '.7z" "'
       + IncludeTrailingPathDelimiter(ACurrentItemName) + '*.*' +  '"';
   finally
-    Unlock
+    Unlock;
   end;
 end;
 
