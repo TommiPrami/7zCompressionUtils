@@ -93,7 +93,7 @@ function TCustomCompressor7z.CompressItem(const ACurrentItem, ADestinationRoot, 
   begin
     var LIntFormat := GetIntFormat(FTaskTotal);
 
-    Result := Format(LIntFormat, [AItemIndex]) + '/' + Format(LIntFormat, [FTaskTotal])
+    Result := Format(LIntFormat, [AItemIndex]) + '/' + Format(LIntFormat, [FTaskTotal]);
   end;
 
 var
