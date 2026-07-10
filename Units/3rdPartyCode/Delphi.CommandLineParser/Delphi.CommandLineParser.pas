@@ -9,21 +9,8 @@ uses
   System.RTTI, System.SysUtils, System.TypInfo;
 
 type
-   {TODO: Add Skip (etc) attribute, to parser just skip the property all to gether, so there could be properties that
-          are helpers for App to use, but they are not (never ever) used from the command line. }
-  { TODO: Illegal values to the parser directly, that are syntactically legal parameters, but not logical for use.
-
-          For now at least for enum like (fooNonInitialized, fooDefault, fooExtraFine), where fooDefault would
-          be defined as a default for parameter, fooNonInitialized as internal error state, so
-          could automatically check the if the user puts explicitly fooNonInitialized to commandline,
-          so parser would give error and info for it.
-
-          Not sure how to handle numerical parameters though, lets say <= 0 would be illegal.
-          or some range is not allowed
-  }
-
   ///  <summary>
-  ///    Specifies short (one letter) name for the switch.
+  ///    Specifies the short (one-letter) name for the switch.
   ///  </summary>
   CLPNameAttribute = class(TCustomAttribute)
   strict private
@@ -34,30 +21,30 @@ type
   end;
 
   ///  <summary>
-  ///    Specifies long name for the switch. If not set, property name is used
-  ///    for long name.
+  ///    Specifies the long name for the switch. If not set, the property name
+  ///    is used as the long name.
   ///
-  ///    A short form of the long name can also be provided which must match the beginning
-  ///    of the long form. In this case, parser will accept shortened versions of the
-  ///    long name, but no shorter than the short form.
-  ///    An example: if 'longName' = 'autotest' and 'shortForm' = 'auto' then the parser
+  ///    An abbreviation of the long name can also be provided which must match the
+  ///    beginning of the long form. In this case the parser will accept shortened
+  ///    versions of the long name, but no shorter than the abbreviation.
+  ///    Example: if 'longName' = 'autotest' and 'abbreviation' = 'auto' then the parser
   ///    will accept 'auto', 'autot', 'autote', 'autotes' and 'autotest', but not 'aut',
-  ///    'au' and 'a'.
+  ///    'au' or 'a'.
   ///
   ///    Multiple long names (alternate switches) can be provided for one entity.
   ///  </summary>
   CLPLongNameAttribute = class(TCustomAttribute)
   strict private
     FLongName : string;
-    FShortForm: string;
+    FAbbreviation: string;
   public
-    constructor Create(const ALongName: string; const AShortForm: string = '');
+    constructor Create(const ALongName: string; const AAbbreviation: string = '');
     property LongName: string read FLongName;
-    property ShortForm: string read FShortForm;
+    property Abbreviation: string read FAbbreviation;
   end;
 
   ///  <summary>
-  ///    Specifies default value which will be used, if switch is not found on the command line.
+  ///    Specifies the default value to use when the switch is not found on the command line.
   ///  </summary>
   CLPDefaultAttribute = class(TCustomAttribute)
   strict private
@@ -68,7 +55,7 @@ type
   end;
 
   ///  <summary>
-  ///    Provides switch description, used for the usage function.
+  ///    Provides a switch description, used by the usage function.
   ///  </summary>
   CLPDescriptionAttribute = class(TCustomAttribute)
   strict private
@@ -89,14 +76,14 @@ type
   end;
 
   ///  <summary>
-  ///    When present, check that given filename must exist.
+  ///    When present, checks that the given file exists.
   ///  </summary>
   CLPFileMustExistAttribute = class(TCustomAttribute)
   public
   end;
 
   ///  <summary>
-  ///    When present, check that directory must exist.
+  ///    When present, checks that the given directory exists.
   ///  </summary>
   CLPDirectoryMustExistAttribute = class(TCustomAttribute)
   public
@@ -104,15 +91,15 @@ type
 
   /// <summary>
   ///   When present, specifies that the switch name can be arbitrarily extended.
-  ///   The code can access this extension via GetExtension function.
+  ///   The code can access this extension via the GetExtension function.
   /// </summary>
   CLPExtendableAttribute = class(TCustomAttribute)
   public
   end;
 
   ///  <summary>
-  ///    Specifies position of a positional (unnamed) switch. First positional
-  ///    switch has position 1.
+  ///    Specifies the position of a positional (unnamed) switch. The first
+  ///    positional switch has position 1.
   ///  </summary>
   CLPPositionAttribute = class(TCustomAttribute)
   strict private
@@ -123,39 +110,102 @@ type
   end;
 
   ///  <summary>
-  ///    Specifies switch that will receive a #13-delimited list of all
+  ///    Specifies the switch that will receive a #13-delimited list of all
   ///    positional parameters for which switch definitions don't exist.
   ///  </summary>
   CLPPositionRestAttribute = class(TCustomAttribute)
   public
   end;
 
+  ///  <summary>
+  ///    Marks a property to be ignored by the command-line parser. Useful for
+  ///    helper properties on the definition class that should never be exposed
+  ///    on the command line.
+  ///  </summary>
+  CLPSkipAttribute = class(TCustomAttribute)
+  public
+  end;
+
+  ///  <summary>
+  ///    Pre-fills the switch from an environment variable if the variable is
+  ///    set and the switch is not provided on the command line. Precedence
+  ///    (lowest to highest): CLPDefault, CLPEnvironment, command-line value.
+  ///  </summary>
+  CLPEnvironmentAttribute = class(TCustomAttribute)
+  strict private
+    FVariableName: string;
+  public
+    constructor Create(const AVariableName: string);
+    property VariableName: string read FVariableName;
+  end;
+
+  ///  <summary>
+  ///    Marks an enum identifier as illegal as command-line input. Useful for
+  ///    sentinel values such as 'Uninitialized' that exist for internal state
+  ///    but should never be selectable by the user. Stack the attribute to
+  ///    mark multiple identifiers.
+  ///  </summary>
+  CLPIllegalValueAttribute = class(TCustomAttribute)
+  strict private
+    FValue: string;
+  public
+    constructor Create(const AValue: string);
+    property Value: string read FValue;
+  end;
+
+  ///  <summary>
+  ///    Restricts a numeric switch (Integer or Float/Date/Time/DateTime) to a
+  ///    closed range. Bounds are inclusive. Use the constructor overload that
+  ///    matches the underlying property type.
+  ///  </summary>
+  CLPRangeAttribute = class(TCustomAttribute)
+  strict private
+    FMinInt: Int64;
+    FMaxInt: Int64;
+    FMinFloat: Double;
+    FMaxFloat: Double;
+    FIsFloat: Boolean;
+  public
+    constructor Create(const AMin, AMax: Int64); overload;
+    constructor Create(const AMin, AMax: Double); overload;
+    property MinInt: Int64 read FMinInt;
+    property MaxInt: Int64 read FMaxInt;
+    property MinFloat: Double read FMinFloat;
+    property MaxFloat: Double read FMaxFloat;
+    property IsFloat: Boolean read FIsFloat;
+  end;
+
   TCLPErrorKind = (
     // configuration error, will result in exception
     ekPositionalsBadlyDefined, ekNameNotDefined, ekShortNameTooLong, ekLongFormsDontMatch,
+    ekInvalidDefault,
     // user data error, will result in error result
     ekMissingPositional, ekExtraPositional, ekMissingNamed, ekUnknownNamed, ekInvalidData,
-    ekWronDataTypeForFileOrDirectoryMustExist, ekFileDoNotExist, ekDirectoryDoNotExist);
+    ekWrongDataTypeForFileOrDirectoryMustExist, ekFileDoesNotExist, ekDirectoryDoesNotExist,
+    ekResponseFile);
 
   TCLPErrorDetailed = (
     edBooleanWithData,             // SBooleanSwitchCannotAcceptData
-    edCLPPositionRestNotString,    // STypeOfACLPPositionRestPropertyMu
-    edExtraCLPPositionRest,        // SOnlyOneCLPPositionRestPropertyIs
+    edCLPPositionRestNotString,    // SPositionRestMustBeString
+    edExtraCLPPositionRest,        // SOnlyOnePositionRestAllowed
     edInvalidDataForSwitch,        // SInvalidDataForSwitch
     edLongFormsDontMatch,          // SLongFormsDontMatch
     edMissingNameForProperty,      // SMissingNameForProperty
-    edMissingPositionalDefinition, // SMissingPositionalParameterDefini
+    edMissingPositionalDefinition, // SMissingPositionalDefinition
     edMissingRequiredSwitch,       // SRequiredSwitchWasNotProvided
     edPositionNotPositive,         // SPositionMustBeGreaterOrEqualTo1
-    edRequiredAfterOptional,       // SRequiredPositionalParametersMust
+    edRequiredAfterOptional,       // SRequiredAfterOptionalForbidden
     edShortNameTooLong,            // SShortNameMustBeOneLetterLong
     edTooManyPositionalArguments,  // STooManyPositionalArguments
     edUnknownSwitch,               // SUnknownSwitch
     edUnsupportedPropertyType,     // SUnsupportedPropertyType
     edMissingRequiredParameter,    // SRequiredParameterWasNotProvided
-    edWrongDataTypeForFileOrDirectoryMustExist, // sWrongDataTypeForFileOrDirectoryMustExist
-    edFileDoNotExist,              // SFileDoNotExist
-    edDirectoryDoNotExist          // SDirectoryDoNotExist
+    edWrongDataTypeForFileOrDirectoryMustExist, // SWrongDataTypeForFileOrDirectoryMustExist
+    edFileDoesNotExist,              // SFileDoesNotExist
+    edDirectoryDoesNotExist,         // SDirectoryDoesNotExist
+    edResponseFileMustBeSole,        // SResponseFileMustBeSole
+    edResponseFileNotFound,          // SResponseFileNotFound
+    edInvalidDefaultValue            // SInvalidDefaultValue
   );
 
   TCLPErrorInfo = record
@@ -167,11 +217,28 @@ type
     Text: string;
   end;
 
-  TCLPOption = (opIgnoreUnknownSwitches);
+  TCLPOption = (
+    opIgnoreUnknownSwitches,
+    /// <summary>
+    ///   Recognize -h, -?, --help (and on Windows also /h, /?, /help) on the
+    ///   command line. When seen, Parse stops processing further switches,
+    ///   skips required-switch validation, returns True, and sets HelpRequested
+    ///   to True. The caller can then render Usage() and exit. Nothing is
+    ///   built in if this option is not set.
+    ///
+    ///   PRECEDENCE / COLLISION: these help tokens are intercepted BEFORE
+    ///   normal switch lookup. If your definition class declares a switch whose
+    ///   short name is 'h' (or a long name 'help'), that switch becomes
+    ///   unreachable via '-h' / '--help' while this option is enabled — the
+    ///   token is treated as a help request instead. Either don't enable this
+    ///   option, or avoid naming switches 'h'/'help', if that conflict matters.
+    /// </summary>
+    opEnableBuiltInHelp);
   TCLPOptions = set of TCLPOption;
 
   ICommandLineParser = interface ['{C9B729D4-3706-46DB-A8A2-1E07E04F497B}']
     function GetErrorInfo: TCLPErrorInfo;
+    function GetHelpRequested: Boolean;
     function GetOptions: TCLPOptions;
     procedure SetOptions(const AValue: TCLPOptions);
     function GetExtension(const ASwitch: string): string;
@@ -179,6 +246,7 @@ type
     function Parse(const ACommandData: TObject): Boolean; overload;
     function Parse(const ACommandLine: string; const ACommandData: TObject): Boolean; overload;
     property ErrorInfo: TCLPErrorInfo read GetErrorInfo;
+    property HelpRequested: Boolean read GetHelpRequested;
     property Options: TCLPOptions read GetOptions write SetOptions;
   end;
 
@@ -187,6 +255,7 @@ type
     FErrorInfo: TCLPErrorInfo;
   public
     constructor Create(const AErrInfo: TCLPErrorInfo);
+    property ErrorInfo: TCLPErrorInfo read FErrorInfo;
   end;
 
   ///  <summary>
@@ -204,32 +273,76 @@ type
   ///  </summary>
   procedure DefaultUsageConsoleOutput(const AParser: ICommandLineParser);
 
+  // ---------------------------------------------------------------------------
+  // Low-level, state-free text helpers used by the usage formatter. They are
+  // exposed so they can be unit-tested in isolation; they have no dependency on
+  // the parser or its switch metadata.
+  // ---------------------------------------------------------------------------
+
+  ///  <summary>
+  ///    Returns the 1-based index of the last space character at or before
+  ///    AStartPos, or 0 if there is none. Used to pick a word-break point.
+  ///  </summary>
+  function CLPLastSpaceBefore(const AValue: string; const AStartPos: Integer): Integer;
+
+  ///  <summary>
+  ///    Word-wraps a single logical line so that no physical line exceeds
+  ///    AWrapAtColumn characters (when a break point exists). Continuation
+  ///    lines are prefixed with AHangingIndent spaces. A word longer than the
+  ///    available width is left intact on its own line rather than being split.
+  ///    AWrapAtColumn <= 0 disables wrapping (returns the line unchanged).
+  ///  </summary>
+  function CLPWordWrapLine(const ALine: string; const AWrapAtColumn, AHangingIndent: Integer): TArray<string>;
+
+  ///  <summary>
+  ///    Lays out a two-column block. Every left cell is padded to the width of
+  ///    the widest left cell, then ASeparator and the right cell are appended.
+  ///    Each resulting row is word-wrapped at AWrapAtColumn with continuation
+  ///    lines hanging-indented under the right column. When a right cell is
+  ///    empty, only the (padded) left cell is emitted. ALeft and ARight must
+  ///    have the same length.
+  ///  </summary>
+  function CLPFormatTwoColumnBlock(const ALeft, ARight: TArray<string>; const ASeparator: string;
+    const AWrapAtColumn: Integer): TArray<string>;
+
+  ///  <summary>
+  ///    Packs ATokens onto as few lines as possible without exceeding
+  ///    AWrapAtColumn, breaking only BETWEEN tokens (never inside one) and
+  ///    indenting continuation lines by AContinuationIndent spaces. A token
+  ///    wider than the column is emitted intact on its own line. AWrapAtColumn
+  ///    &lt;= 0 places every token on a single line.
+  ///  </summary>
+  function CLPWrapTokens(const ATokens: TArray<string>; const AWrapAtColumn, AContinuationIndent: Integer): TArray<string>;
+
 implementation
 
 uses
-  System.Character, System.Classes, System.Generics.Collections, System.Generics.Defaults, System.StrUtils;
+  System.Character, System.Classes, System.DateUtils, System.Generics.Collections, System.Generics.Defaults, System.StrUtils;
 
 resourcestring
-  SBooleanSwitchCannotAcceptData    = 'Boolean switch cannot accept data, that can''t be converted to Boolean value use True/False.';
-  SDefault                          = ', default: ';
-  SInvalidDataForSwitch             = 'Invalid data for switch.';
-  SLongFormsDontMatch               = 'Short version of the long name must match beginning of the long name';
-  SMissingNameForProperty           = 'Missing name for property.';
-  SMissingPositionalParameterDefini = 'Missing positional parameter definition.';
-  SOnlyOneCLPPositionRestPropertyIs = 'Only one CLPPositionRest property is allowed.';
-  SOptions                          = '[options]';
-  SPositionMustBeGreaterOrEqualTo1  = 'Position must be greater or equal to 1.';
-  SRequiredParameterWasNotProvided  = 'Required parameter was not provided.';
-  SRequiredPositionalParametersMust = 'Required positional parameters must not appear after optional positional parameters.';
-  SRequiredSwitchWasNotProvided     = 'Required switch was not provided.';
-  SShortNameMustBeOneLetterLong     = 'Short name must be one letter long';
-  STooManyPositionalArguments       = 'Too many positional arguments.';
-  STypeOfACLPPositionRestPropertyMu = 'Type of a CLPPositionRest property must be string.';
-  SUnknownSwitch                    = 'Unknown switch.';
-  SUnsupportedPropertyType          = 'Unsupported property %s type.';
-  SWrongDataTypeForFileOrDirectoryMustExist = 'Switch Datatype for file or directory check musht be string.';
-  SFileDoNotExist                   = 'File must exist';
-  SDirectoryDoNotExist              = 'Directory must exist';
+  SBooleanSwitchCannotAcceptData     = 'Boolean switch cannot accept this data. Use True or False.';
+  SDefault                           = ', default: ';
+  SInvalidDataForSwitch              = 'Invalid data for switch.';
+  SLongFormsDontMatch                = 'Short version of the long name must match the beginning of the long name.';
+  SMissingNameForProperty            = 'Missing name for property.';
+  SMissingPositionalDefinition       = 'Missing positional parameter definition.';
+  SOnlyOnePositionRestAllowed        = 'Only one CLPPositionRest property is allowed.';
+  SOptions                           = '[options]';
+  SPositionMustBeGreaterOrEqualTo1   = 'Position must be greater than or equal to 1.';
+  SRequiredParameterWasNotProvided   = 'Required parameter was not provided.';
+  SRequiredAfterOptionalForbidden    = 'Required positional parameters must not appear after optional positional parameters.';
+  SRequiredSwitchWasNotProvided      = 'Required switch was not provided.';
+  SShortNameMustBeOneLetterLong      = 'Short name must be one letter long.';
+  STooManyPositionalArguments        = 'Too many positional arguments.';
+  SPositionRestMustBeString          = 'Type of a CLPPositionRest property must be a string.';
+  SUnknownSwitch                     = 'Unknown switch.';
+  SUnsupportedPropertyType           = 'Unsupported type for property %s.';
+  SWrongDataTypeForFileOrDirectoryMustExist = 'Switch data type for a file or directory check must be a string.';
+  SFileDoesNotExist                  = 'File must exist.';
+  SDirectoryDoesNotExist             = 'Directory must exist.';
+  SResponseFileMustBeSole            = 'A response file (@file) must be the only command-line argument; no other switches or @ tokens are allowed.';
+  SResponseFileNotFound              = 'Response file does not exist.';
+  SInvalidDefaultValue               = 'Default value is not valid for this switch.';
 
 type
   // Usage: LEnumNameStr := TEnumConverter.EnumToString(FormMain.BorderStyle);
@@ -239,15 +352,18 @@ type
     class function EnumToString<T>(const AEnumValue: T; const AStripLowercasePrefix: Boolean = False): string;
   end;
 
-  TCLPSwitchType = (stString, stInteger, stBoolean, stEnumeration, stStringDynArray);
+  TCLPSwitchType = (stString, stInteger, stFloat, stBoolean, stEnumeration, stDate, stTime, stDateTime, stStringArray);
 
-  TCLPSwitchOption = (soUnknown, soRequired, soPositional, soPositionRest, soExtendable, soFileMustExist, soDirectoryMustExist);
+  TCLPSwitchOption = (soRequired, soPositional, soPositionRest, soExtendable, soFileMustExist, soDirectoryMustExist);
   TCLPSwitchOptions = set of TCLPSwitchOption;
+
+  // Result of TCommandLineParser.FileSystemCheck.
+  TFSCheckResult = (fscOk, fscFileMissing, fscDirectoryMissing);
 
   TCLPLongName = record
     LongForm: string;
-    ShortForm: string;
-    constructor Create(const ALongForm, AShortForm: string);
+    Abbreviation: string;
+    constructor Create(const ALongForm, AAbbreviation: string);
   end; { TCLPLongName }
 
   TCLPLongNames = TArray<TCLPLongName>;
@@ -256,54 +372,94 @@ type
   strict private
     FDefaultValue: string;
     FDescription: string;
+    FEnvironmentVariable: string;
+    FHasIntRange: Boolean;
+    FHasFloatRange: Boolean;
+    FIllegalValues: TArray<string>;
     FInstance: TObject;
     FLongNames: TCLPLongNames;
+    FMinInt: Int64;
+    FMaxInt: Int64;
+    FMinFloat: Double;
+    FMaxFloat: Double;
     FName: string;
     FOptions: TCLPSwitchOptions;
-    FParamDesc: string;
+    FParamName: string;
     FParamValue: string;
     FPosition: Integer;
     FPropertyName: string;
-    FProvided: Boolean;
-    FShortLongForm: string;
+    FRttiContext: TRttiContext;
+    FHasValue: Boolean;
     FSwitchType: TCLPSwitchType;
   strict protected
+    function GetRttiProperty: TRttiProperty;
     function Quote(const AValue: string): string;
   public
     constructor Create(const AInstance: TObject; const APropertyName, AName: string; const ALongNames: TCLPLongNames;
       const ASwitchType: TCLPSwitchType; const APosition: Integer; const AOptions: TCLPSwitchOptions;
-      const ADefaultValue, ADescription, AParamName: string);
+      const ADefaultValue, ADescription, AParamName, AEnvironmentVariable: string);
     function AppendValue(const AValue, ADelim: string; const ADoQuote: Boolean): Boolean;
+    function DisplayName: string;
     function GetValue: string;
     function GetValueOrDefault: string;
+    function HasIntRange: Boolean;
+    function HasFloatRange: Boolean;
+    function IsIllegalValue(const AValue: string): Boolean;
     function SetValue(const AValue: string): Boolean;
-    procedure Enable;
+    procedure AddIllegalValue(const AValue: string);
+    procedure SetBooleanTrue;
+    procedure SetIntRange(const AMin, AMax: Int64);
+    procedure SetFloatRange(const AMin, AMax: Double);
     property DefaultValue: string read FDefaultValue;
     property Description: string read FDescription;
+    property EnvironmentVariable: string read FEnvironmentVariable;
     property LongNames: TCLPLongNames read FLongNames;
     property Name: string read FName;
     property Options: TCLPSwitchOptions read FOptions;
-    property ParamName: string read FParamDesc;
+    property ParamName: string read FParamName;
     property ParamValue: string read FParamValue write FParamValue;
     property Position: Integer read FPosition write FPosition;
     property PropertyName: string read FPropertyName;
-    property Provided: Boolean read FProvided;
-    property ShortLongForm: string read FShortLongForm;
+    /// <summary>
+    ///   True once the switch has received a value from ANY source: a default,
+    ///   an environment variable, or the command line. (It is NOT limited to
+    ///   "the user typed it on the command line".) The required-switch check
+    ///   uses this, which is why a required switch that also has a default is
+    ///   considered satisfied even when absent from the command line.
+    /// </summary>
+    property HasValue: Boolean read FHasValue;
     property SwitchType: TCLPSwitchType read FSwitchType;
   end;
 
 const
   {$IFDEF MSWINDOWS}
-    FSwitchDelims: array [0..2] of string = ('-', '/', '--');
+    SWITCH_DELIMITERS: array [0..2] of string = ('--', '-', '/');
   {$ELSE}
-    FSwitchDelims: array [0..1] of string = ('--', '-');
+    SWITCH_DELIMITERS: array [0..1] of string = ('--', '-');
   {$ENDIF}
-    FParamDelims : array [0..1] of Char = (':', '=');
+    PARAM_DELIMITERS : array [0..1] of Char = (':', '=');
+
+  // Canonical prefixes used when RENDERING usage. Intentionally independent of
+  // SWITCH_DELIMITERS (which governs PARSING and whose order changed when '--' was
+  // promoted to first-tried). Short = single dash, long = double dash.
+  USAGE_SHORT_PREFIX = '-';
+  USAGE_PARAM_DELIMITER = ':';   // matches a real, parseable separator
+  USAGE_DESC_DELIMITER = ' - '; // between the names column and the description (legacy two-column layout)
+
+  // Stacked usage detail layout (switch label / description / default) plus the
+  // wrapped prototype. The numeric values are indent widths, in spaces.
+  USAGE_DEFAULT_LABEL      = 'default: ';
+  USAGE_DESC_PREFIX        = '- ';
+  USAGE_PROTO_CONT_INDENT  = 2; // prototype continuation lines
+  USAGE_SWITCH_INDENT      = 2; // the switch label line
+  USAGE_DESC_INDENT        = 4; // spaces before the '- ' description marker
+  USAGE_DETAIL_CONT_INDENT = 6; // description continuation + default line (= USAGE_DESC_INDENT + Length('- '))
 
 type
   TCommandLineParser = class(TInterfacedObject, ICommandLineParser)
   strict private
     FErrorInfo: TCLPErrorInfo;
+    FHelpRequested: Boolean;
     FOptions: TCLPOptions;
     FPositionals: TArray<TSwitchData>;
     FSwitchComparer: TStringComparer;
@@ -311,21 +467,24 @@ type
     FSwitchList: TObjectList<TSwitchData>;
   strict protected
     function CheckAttributes: Boolean;
-    function FileSystemCheck(const ASwitchData: TSwitchData): TCLPSwitchOption;
+    function ExpandResponseFile(var ACommandLine: string): Boolean;
+    function FileSystemCheck(const ASwitchData: TSwitchData; var AFileOrDirectoryNotFound: string): TFSCheckResult;
     function FindExtendableSwitch(const ASwitchName: string; var AParam: string; var AData: TSwitchData): Boolean;
-    function GetCommandLine: string;
+    function BuildCommandLineFromParams: string;
     function GetErrorInfo: TCLPErrorInfo; inline;
+    function GetHelpRequested: Boolean;
     function GetOptions: TCLPOptions;
-    function GrabNextElement(var s, el: string): Boolean;
-    function IsSwitch(const ASwitchRawValue: string; var AParam: string; var AData: TSwitchData): Boolean;
-    function MapPropertyType(const AProp: TRttiProperty; const APropertyRttiType: TRttiType): TCLPSwitchType;
+    function GrabNextElement(var ARemaining, AToken: string): Boolean;
+    function IsBuiltInHelpToken(const ARawToken: string): Boolean;
+    function IsSwitch(const ASwitchRawValue: string; var AParam: string; var AHasParamDelim: Boolean; var AData: TSwitchData): Boolean;
+    function MapPropertyType(const AProp: TRttiProperty): TCLPSwitchType;
     function ProcessCommandLine(const ACommandData: TObject; const ACommandLine: string): Boolean;
     function SetError(const AKind: TCLPErrorKind; const ADetail: TCLPErrorDetailed; const AText: string; const APosition: Integer = 0;
       const ASwitchName: string = ''): Boolean;
     procedure AddSwitch(const AInstance: TObject; const APropertyName, AName: string; const ALongNames: TCLPLongNames;
       const ASwitchType: TCLPSwitchType; const APosition: Integer; const AOptions: TCLPSwitchOptions;
-      const ADefaultValue, ADescription, AParamName: string);
-    procedure ProcessAttributes(const AInstance: TObject; const AProp: TRttiProperty; const APropertyRttiType: TRttiType);
+      const ADefaultValue, ADescription, AParamName, AEnvironmentVariable: string);
+    procedure ProcessAttributes(const AInstance: TObject; const AProp: TRttiProperty);
     procedure ProcessDefinitionClass(const ACommandData: TObject);
     procedure SetOptions(const AValue: TCLPOptions);
   protected // used in TUsageFormatter
@@ -339,17 +498,26 @@ type
     function Parse(const ACommandLine: string; const ACommandData: TObject): Boolean; overload;
     function Usage(const AWrapAtColumn: Integer = 80): TArray<string>;
     property ErrorInfo: TCLPErrorInfo read GetErrorInfo;
+    property HelpRequested: Boolean read GetHelpRequested;
     property Options: TCLPOptions read GetOptions write SetOptions;
   end;
 
   TUsageFormatter = class
-  private
-    function AddParameter(const AName, APrefix, ADelim: string; const AData: TSwitchData): string;
-    function GetCommandLinePrototype(const APositionalParams: TArray<TSwitchData>; const ASwitchList: TObjectList<TSwitchData>): string;
-    function GetPositionalSwitchName(const ASwitchData: TSwitchData): string;
-    function LastSpaceBefore(const AValue: string; const AStartPos: Integer): Integer;
-    function Wrap(const AName: string; const AData: TSwitchData): string;
-    procedure AlignAndWrap(const ASl: TStringList; const AWrapAtColumn: Integer);
+  strict private
+    /// Returns the param suffix for a switch label, e.g. ':<value>'. Empty for
+    /// Boolean switches, which are bare flags and take no argument.
+    function ParamSuffix(const AData: TSwitchData): string;
+    /// One alternate label, e.g. '-v' / '--verbose' / '--count:<int>'.
+    function SwitchLabel(const APrefix, AName: string; const AData: TSwitchData): string;
+    /// The full names column for a switch, e.g. '-c:<int>, --count:<int>'.
+    function NamesColumn(const AData: TSwitchData): string;
+    /// The single name used in the compact prototype line.
+    function PrimaryName(const AData: TSwitchData): string;
+    /// The display name of a positional switch.
+    function PositionalName(const AData: TSwitchData): string;
+    /// Wraps AText in '[ ]' (optional) or '< >' (required positional).
+    function Decorate(const AText: string; const AData: TSwitchData): string;
+    function BuildPrototypeTokens(const APositionals: TArray<TSwitchData>; const ASwitchList: TObjectList<TSwitchData>): TArray<string>;
   public
     procedure Usage(const AParser: TCommandLineParser; var AUsageList: TArray<string>; const AWrapAtColumn: Integer = 80);
   end;
@@ -370,18 +538,14 @@ begin
 
   if AStripLowercasePrefix and not Result.IsEmpty then
   begin
-    var LIndex: Integer := 0;
+    var LIndex: Integer := 1;
     var LResultLength := Length(Result);
 
-    while LIndex <= LResultLength do
-    begin
+    while (LIndex <= LResultLength) and Result[LIndex].IsLower do
       Inc(LIndex);
 
-      if not Result[LIndex].IsLower then
-        Break;
-    end;
-
-    Result := Copy(Result, LIndex, LResultLength);
+    if LIndex > 1 then
+      Result := Copy(Result, LIndex, LResultLength - LIndex + 1);
   end;
 end;
 
@@ -394,13 +558,12 @@ begin
   LUsageLines := AParser.Usage;
 
   WriteLn('Usage:');
-  WriteLn('  ' + LUsageLines[0]);
 
-  for LIndex := 1 to High(LUsageLines) do
+  for LIndex := 0 to High(LUsageLines) do
   begin
     LLine := LUsageLines[LIndex];
 
-    WriteLn('    ' + LLine);
+    WriteLn(LLine);
   end;
 
   var LError := AParser.ErrorInfo.Text;
@@ -408,7 +571,8 @@ begin
   if not LError.IsEmpty then
   begin
     WriteLn('');
-    WriteLn('    Error: ' + AParser.ErrorInfo.SwitchName.QuotedString('"') + ' - ' + AParser.ErrorInfo.Text.QuotedString('"'));
+    WriteLn('  * Error in switch:');
+    WriteLn('    - ' + AParser.ErrorInfo.SwitchName + ' - ' + AParser.ErrorInfo.Text);
   end;
 end;
 
@@ -443,12 +607,50 @@ end;
 
 { CLPLongNameAttribute }
 
-constructor CLPLongNameAttribute.Create(const ALongName, AShortForm: string);
+constructor CLPLongNameAttribute.Create(const ALongName, AAbbreviation: string);
 begin
   inherited Create;
 
   FLongName := ALongName;
-  FShortForm := AShortForm;
+  FAbbreviation := AAbbreviation;
+end;
+
+{ CLPEnvironmentAttribute }
+
+constructor CLPEnvironmentAttribute.Create(const AVariableName: string);
+begin
+  inherited Create;
+
+  FVariableName := AVariableName;
+end;
+
+{ CLPIllegalValueAttribute }
+
+constructor CLPIllegalValueAttribute.Create(const AValue: string);
+begin
+  inherited Create;
+
+  FValue := AValue;
+end;
+
+{ CLPRangeAttribute }
+
+constructor CLPRangeAttribute.Create(const AMin, AMax: Int64);
+begin
+  inherited Create;
+
+  FMinInt := AMin;
+  FMaxInt := AMax;
+  FIsFloat := False;
+end;
+
+constructor CLPRangeAttribute.Create(const AMin, AMax: Double);
+begin
+  inherited Create;
+
+  FMinFloat := AMin;
+  FMaxFloat := AMax;
+  FIsFloat := True;
 end;
 
 { CLPDefaultAttribute }
@@ -485,31 +687,38 @@ end;
 
 { TCLPLongName }
 
-constructor TCLPLongName.Create(const ALongForm, AShortForm: string);
+constructor TCLPLongName.Create(const ALongForm, AAbbreviation: string);
 begin
   LongForm := ALongForm;
-  ShortForm := AShortForm;
+  Abbreviation := AAbbreviation;
 end;
 
 { TSwitchData }
 
 constructor TSwitchData.Create(const AInstance: TObject; const APropertyName, AName: string;
   const ALongNames: TCLPLongNames; const ASwitchType: TCLPSwitchType; const APosition: Integer;
-  const AOptions: TCLPSwitchOptions; const ADefaultValue, ADescription, AParamName: string);
+  const AOptions: TCLPSwitchOptions; const ADefaultValue, ADescription, AParamName, AEnvironmentVariable: string);
 begin
   inherited Create;
+
+  // Hold the RTTI context for the whole lifetime of this object. TRttiContext is
+  // a record whose interface token keeps the shared RTTI pool - and every
+  // TRttiType / TRttiProperty it hands out - alive. If the context lived only as
+  // a local inside a lookup helper, the pool would be released the moment that
+  // helper returned, leaving any returned TRttiProperty dangling.
+  FRttiContext := TRttiContext.Create;
 
   FInstance := AInstance;
   FPropertyName := APropertyName;
   FName := AName;
   FLongNames := ALongNames;
-  FShortLongForm := ShortLongForm;
   FSwitchType := ASwitchType;
   FPosition := APosition;
   FOptions := AOptions;
   FDefaultValue := ADefaultValue;
   FDescription := ADescription;
-  FParamDesc := AParamName;
+  FParamName := AParamName;
+  FEnvironmentVariable := AEnvironmentVariable;
 end;
 
 function TSwitchData.AppendValue(const AValue, ADelim: string; const ADoQuote: Boolean): Boolean;
@@ -529,54 +738,70 @@ begin
   Result := SetValue(LStringValue);
 end;
 
-procedure TSwitchData.Enable;
+function TSwitchData.DisplayName: string;
+begin
+  if Length(FLongNames) > 0 then
+    Result := FLongNames[0].LongForm
+  else if FName <> '' then
+    Result := FName
+  else if FPropertyName <> '' then
+    Result := FPropertyName
+  else
+    Result := IntToStr(FPosition);
+end;
+
+function TSwitchData.GetRttiProperty: TRttiProperty;
+begin
+  // Use the long-lived FRttiContext (created in the constructor) so the returned
+  // TRttiProperty stays valid for as long as this TSwitchData lives. Creating a
+  // local context here instead would free the RTTI pool the moment this function
+  // returned, leaving the caller with a dangling TRttiProperty - a use-after-free
+  // that typically surfaces as an AV around the next call that touches it.
+  Result := FRttiContext.GetType(FInstance.ClassType).GetProperty(FPropertyName);
+end;
+
+procedure TSwitchData.SetBooleanTrue;
 var
-  LContext: TRttiContext;
-  LRtttiType: TRttiType;
   LProperty: TRttiProperty;
 begin
   if SwitchType <> stBoolean then
-    raise Exception.Create('TSwitchData.Enable: Not supported');
+    raise Exception.Create('TSwitchData.SetBooleanTrue: only supported for Boolean switches');
 
-  LContext := TRttiContext.Create;
-  LRtttiType := LContext.GetType(FInstance.ClassType);
-  LProperty := LRtttiType.GetProperty(FPropertyName);
+  LProperty := GetRttiProperty;
 
   LProperty.SetValue(FInstance, True);
-  FProvided := True;
+  FHasValue := True;
 end;
 
 function TSwitchData.GetValue: string;
 var
-  LContext: TRttiContext;
-  LRtttiType: TRttiType;
   LProperty: TRttiProperty;
 begin
-  LContext := TRttiContext.Create;
-  LRtttiType := LContext.GetType(FInstance.ClassType);
-  LProperty := LRtttiType.GetProperty(FPropertyName);
+  LProperty := GetRttiProperty;
 
-  if SwitchType = stEnumeration then
-  begin
-    var LEnumValue: Integer := GetEnumValue(LProperty.PropertyType.Handle, FPropertyName);
-
-    if LEnumValue <> -1 then
-    begin
-      var LValue := TValue.FromOrdinal(LProperty.PropertyType.Handle, LEnumValue);
-
-      Result := LProperty.GetValue(FInstance).AsString
-    end
-    else
-      Result := '';
-  end
-  else if SwitchType = stStringDynArray then
-  begin
-    var LArray: TArray<string> := LProperty.GetValue(FInstance).AsType<TArray<string>>;
-
-    Result := Result.Join(';', LArray);
-  end
+  case SwitchType of
+    stEnumeration:
+      begin
+        var LValue := LProperty.GetValue(FInstance);
+        Result := GetEnumName(LProperty.PropertyType.Handle, LValue.AsOrdinal);
+      end;
+    stStringArray:
+      begin
+        var LArray: TArray<string> := LProperty.GetValue(FInstance).AsType<TArray<string>>;
+        Result := string.Join(';', LArray);
+      end;
+    stFloat:
+      Result := FloatToStr(LProperty.GetValue(FInstance).AsExtended, TFormatSettings.Invariant);
+    stDate:
+      // Date-only: no time component or 'Z' suffix.
+      Result := FormatDateTime('yyyy-mm-dd', LProperty.GetValue(FInstance).AsExtended);
+    stTime:
+      Result := FormatDateTime('hh:nn:ss', LProperty.GetValue(FInstance).AsExtended);
+    stDateTime:
+      Result := DateToISO8601(LProperty.GetValue(FInstance).AsExtended, True);
   else
     Result := LProperty.GetValue(FInstance).AsString;
+  end;
 end;
 
 function TSwitchData.GetValueOrDefault: string;
@@ -585,6 +810,47 @@ begin
 
   if Result.IsEmpty then
     Result := DefaultValue;
+end;
+
+function TSwitchData.HasIntRange: Boolean;
+begin
+  Result := FHasIntRange;
+end;
+
+function TSwitchData.HasFloatRange: Boolean;
+begin
+  Result := FHasFloatRange;
+end;
+
+procedure TSwitchData.SetIntRange(const AMin, AMax: Int64);
+begin
+  FHasIntRange := True;
+  FMinInt := AMin;
+  FMaxInt := AMax;
+end;
+
+procedure TSwitchData.SetFloatRange(const AMin, AMax: Double);
+begin
+  FHasFloatRange := True;
+  FMinFloat := AMin;
+  FMaxFloat := AMax;
+end;
+
+procedure TSwitchData.AddIllegalValue(const AValue: string);
+begin
+  SetLength(FIllegalValues, Length(FIllegalValues) + 1);
+  FIllegalValues[High(FIllegalValues)] := AValue;
+end;
+
+function TSwitchData.IsIllegalValue(const AValue: string): Boolean;
+var
+  LIllegal: string;
+begin
+  for LIllegal in FIllegalValues do
+    if SameText(LIllegal, AValue) then
+      Exit(True);
+
+  Result := False;
 end;
 
 function TSwitchData.Quote(const AValue: string): string;
@@ -597,51 +863,106 @@ end;
 
 function TSwitchData.SetValue(const AValue: string): Boolean;
 var
-  LCode: Integer;
-  LIntegerValue: Integer;
-  LContext: TRttiContext;
-  LRtttiType: TRttiType;
+  LInt64Value: Int64;
   LProperty: TRttiProperty;
 begin
   Result := True;
 
-  LContext := TRttiContext.Create;
-  LRtttiType := LContext.GetType(FInstance.ClassType);
-  LProperty := LRtttiType.GetProperty(FPropertyName);
+  LProperty := GetRttiProperty;
 
   case SwitchType of
     stString: LProperty.SetValue(FInstance, AValue);
     stInteger:
       begin
-        Val(AValue, LIntegerValue, LCode);
-
-        if LCode <> 0 then
+        if not TryStrToInt64(AValue, LInt64Value) then
           Exit(False);
 
-        LProperty.SetValue(FInstance, LIntegerValue);
+        if FHasIntRange and ((LInt64Value < FMinInt) or (LInt64Value > FMaxInt)) then
+          Exit(False);
+
+        // tkInt64 properties take the full 64-bit value. A 32-bit Integer (or
+        // smaller) property must reject anything that doesn't fit, rather than
+        // silently wrapping.
+        if LProperty.PropertyType.TypeKind = tkInt64 then
+          LProperty.SetValue(FInstance, LInt64Value)
+        else
+        begin
+          if (LInt64Value < Low(Integer)) or (LInt64Value > High(Integer)) then
+            Exit(False);
+
+          LProperty.SetValue(FInstance, Integer(LInt64Value));
+        end;
+      end;
+    stFloat:
+      begin
+        var LFloatValue: Double;
+
+        if not TryStrToFloat(AValue, LFloatValue, TFormatSettings.Invariant) then
+          Exit(False);
+
+        if FHasFloatRange and ((LFloatValue < FMinFloat) or (LFloatValue > FMaxFloat)) then
+          Exit(False);
+
+        LProperty.SetValue(FInstance, LFloatValue);
+      end;
+    stDate:
+      begin
+        var LDateValue: TDateTime;
+
+        if TryISO8601ToDate(AValue, LDateValue, True) then
+          LProperty.SetValue(FInstance, TValue.From<TDate>(DateOf(LDateValue)))
+        else if TryStrToDate(AValue, LDateValue, TFormatSettings.Invariant) then
+          LProperty.SetValue(FInstance, TValue.From<TDate>(DateOf(LDateValue)))
+        else
+          Exit(False);
+      end;
+    stTime:
+      begin
+        var LTimeValue: TDateTime;
+
+        if TryStrToTime(AValue, LTimeValue, TFormatSettings.Invariant) then
+          LProperty.SetValue(FInstance, TValue.From<TTime>(TimeOf(LTimeValue)))
+        else
+          Exit(False);
+      end;
+    stDateTime:
+      begin
+        var LDateTimeValue: TDateTime;
+
+        if TryISO8601ToDate(AValue, LDateTimeValue, True) then
+          LProperty.SetValue(FInstance, TValue.From<TDateTime>(LDateTimeValue))
+        else if TryStrToDateTime(AValue, LDateTimeValue, TFormatSettings.Invariant) then
+          LProperty.SetValue(FInstance, TValue.From<TDateTime>(LDateTimeValue))
+        else
+          Exit(False);
       end;
     stBoolean:
       begin
-        if TryStrToBool(AValue, Result) then
-          LProperty.SetValue(FInstance, Result);
+        var LBoolValue: Boolean;
+
+        if TryStrToBool(AValue, LBoolValue) then
+          LProperty.SetValue(FInstance, LBoolValue)
+        else
+          Exit(False);
       end;
     stEnumeration:
       begin
-        if LProperty.IsWritable then
-        begin
-          var LEnumValue: Integer := GetEnumValue(LProperty.PropertyType.Handle, AValue);
+        if not LProperty.IsWritable then
+          Exit(False);
 
-          if LEnumValue <> -1 then
-          begin
-            var LValue := TValue.FromOrdinal(LProperty.PropertyType.Handle, LEnumValue);
+        if IsIllegalValue(AValue) then
+          Exit(False);
 
-            LProperty.SetValue(FInstance, LValue)
-          end
-          else
-            raise Exception.Create('TSwitchData.SetValue: Unsupported value "' + AValue.QuotedString('"') + ' for ' + FPropertyName);
-        end;
+        var LEnumValue: Integer := GetEnumValue(LProperty.PropertyType.Handle, AValue);
+
+        if LEnumValue = -1 then
+          Exit(False);
+
+        var LValue := TValue.FromOrdinal(LProperty.PropertyType.Handle, LEnumValue);
+
+        LProperty.SetValue(FInstance, LValue);
       end;
-    stStringDynArray:
+    stStringArray:
       begin
         var LStringArray := SplitArray(AValue);
 
@@ -653,7 +974,7 @@ begin
       raise Exception.Create('TSwitchData.SetValue: Unknown or unsupported SwitchType: ' + TEnumConverter.EnumToString(SwitchType));
   end;
 
-  FProvided := True;
+  FHasValue := True;
 end;
 
 { TCommandLineParser }
@@ -677,14 +998,14 @@ end;
 
 procedure TCommandLineParser.AddSwitch(const AInstance: TObject; const APropertyName, AName: string; const ALongNames: TCLPLongNames;
   const ASwitchType: TCLPSwitchType; const APosition: Integer; const AOptions: TCLPSwitchOptions;
-  const ADefaultValue, ADescription, AParamName: string);
+  const ADefaultValue, ADescription, AParamName, AEnvironmentVariable: string);
 var
   LSwitchData: TSwitchData;
   LIndex: Integer;
   LLongName: TCLPLongName;
 begin
   LSwitchData := TSwitchData.Create(AInstance, APropertyName, AName, ALongNames, ASwitchType, APosition, AOptions, ADefaultValue,
-    ADescription, AParamName);
+    ADescription, AParamName, AEnvironmentVariable);
 
   FSwitchList.Add(LSwitchData);
 
@@ -695,8 +1016,8 @@ begin
   begin
     FSwitchDict.Add(LLongName.LongForm, LSwitchData);
 
-    if LLongName.ShortForm <> '' then
-      for LIndex := Length(LLongName.ShortForm) to Length(LLongName.LongForm) - 1 do
+    if LLongName.Abbreviation <> '' then
+      for LIndex := Length(LLongName.Abbreviation) to Length(LLongName.LongForm) - 1 do
         FSwitchDict.AddOrSetValue(Copy(LLongName.LongForm, 1, LIndex), LSwitchData);
   end;
 end;
@@ -710,7 +1031,7 @@ end;
 ///
 ///   There must be at most one 'Rest' positional attribute.
 ///
-///   Each switch attribute must have a long or short name. (That is actually enforced in
+///   Each switch attribute must have a long or short name. (That is actually enforced
 ///   in the current implementation as long name is set to property name by default,
 ///   but the test is still left in for future-proofing.)
 ///
@@ -740,9 +1061,9 @@ begin
       if soPositionRest in LSwitchData.Options then
       begin
         if Assigned(LPositionRest) then
-          Exit(SetError(ekPositionalsBadlyDefined, edExtraCLPPositionRest, SOnlyOneCLPPositionRestPropertyIs, 0, LSwitchData.PropertyName))
+          Exit(SetError(ekPositionalsBadlyDefined, edExtraCLPPositionRest, SOnlyOnePositionRestAllowed, 0, LSwitchData.PropertyName))
         else if LSwitchData.SwitchType <> stString then
-          Exit(SetError(ekPositionalsBadlyDefined, edCLPPositionRestNotString, STypeOfACLPPositionRestPropertyMu, 0, LSwitchData.PropertyName))
+          Exit(SetError(ekPositionalsBadlyDefined, edCLPPositionRestNotString, SPositionRestMustBeString, 0, LSwitchData.PropertyName))
         else
           LPositionRest := LSwitchData;
       end
@@ -755,9 +1076,9 @@ begin
       end;
 
       if not (soRequired in LSwitchData.Options) then
-        LHasOptional := False
+        LHasOptional := True
       else if LHasOptional then
-        Exit(SetError(ekPositionalsBadlyDefined, edRequiredAfterOptional, SRequiredPositionalParametersMust, LSwitchData.Position));
+        Exit(SetError(ekPositionalsBadlyDefined, edRequiredAfterOptional, SRequiredAfterOptionalForbidden, LSwitchData.Position));
     end;
 
   if Assigned(LPositionRest) then
@@ -766,20 +1087,21 @@ begin
     LPositionRest.Position := LHighPos;
   end;
 
-  if LHighPos = 0 then
-    Exit(True);
+  if LHighPos > 0 then
+  begin
+    SetLength(FPositionals, LHighPos);
 
-  SetLength(FPositionals, LHighPos);
-  for LIndex := Low(FPositionals) to High(FPositionals) do
-    FPositionals[LIndex] := nil;
+    for LIndex := Low(FPositionals) to High(FPositionals) do
+      FPositionals[LIndex] := nil;
 
-  for LSwitchData in FSwitchList do
-    if soPositional in LSwitchData.Options then
-      FPositionals[LSwitchData.Position - 1] := LSwitchData;
+    for LSwitchData in FSwitchList do
+      if soPositional in LSwitchData.Options then
+        FPositionals[LSwitchData.Position - 1] := LSwitchData;
 
-  for LIndex := Low(FPositionals) to High(FPositionals) do
-    if FPositionals[LIndex] = nil then
-      Exit(SetError(ekPositionalsBadlyDefined, edMissingPositionalDefinition, SMissingPositionalParameterDefini, LIndex + 1));
+    for LIndex := Low(FPositionals) to High(FPositionals) do
+      if FPositionals[LIndex] = nil then
+        Exit(SetError(ekPositionalsBadlyDefined, edMissingPositionalDefinition, SMissingPositionalDefinition, LIndex + 1));
+  end;
 
   for LSwitchData in FSwitchList do
     if not (soPositional in LSwitchData.Options) then
@@ -788,16 +1110,98 @@ begin
       else if (LSwitchData.Name <> '') and (Length(LSwitchData.Name) <> 1) then
         Exit(SetError(ekShortNameTooLong, edShortNameTooLong, SShortNameMustBeOneLetterLong, 0, LSwitchData.Name))
       else for LLongName in LSwitchData.LongNames do
-        if (LLongName.ShortForm <> '') and (not StartsText(LLongName.ShortForm, LLongName.LongForm)) then
+        if (LLongName.Abbreviation <> '') and (not StartsText(LLongName.Abbreviation, LLongName.LongForm)) then
           Exit(SetError(ekLongFormsDontMatch, edLongFormsDontMatch, SLongFormsDontMatch, 0, LLongName.LongForm));
 end;
 
-function TCommandLineParser.FileSystemCheck(const ASwitchData: TSwitchData): TCLPSwitchOption;
+///  <summary>
+///    Detects and expands a response-file token (@filename) on the command line.
+///
+///    Rules:
+///      * If no token starts with '@', the command line is left unchanged
+///        and the function returns True.
+///      * If exactly one token is present AND it starts with '@', the file is
+///        loaded and its contents replace ACommandLine. Newlines in the file
+///        are treated as whitespace so the existing tokenizer handles it.
+///      * Any other shape (multiple tokens with @, two @-tokens, etc.) is an
+///        error — response files must be the sole command-line argument.
+///      * Recursion is not allowed: if the loaded content itself contains an
+///        '@' token, that's also an error.
+///  </summary>
+function TCommandLineParser.ExpandResponseFile(var ACommandLine: string): Boolean;
+var
+  LCopy: string;
+  LToken: string;
+  LTotalTokens: Integer;
+  LResponseFileToken: string;
+  LResponseFileCount: Integer;
+  LFileName: string;
+  LFileLines: TStringList;
+begin
+  LResponseFileToken := '';
+  LResponseFileCount := 0;
+  LTotalTokens := 0;
+
+  // First pass: tokenize a copy of the command line and count tokens / @-tokens.
+  LCopy := ACommandLine;
+
+  while GrabNextElement(LCopy, LToken) do
+  begin
+    Inc(LTotalTokens);
+
+    if LToken.StartsWith('@') then
+    begin
+      LResponseFileToken := LToken;
+      Inc(LResponseFileCount);
+    end;
+  end;
+
+  if LResponseFileCount = 0 then
+    Exit(True); // Nothing to expand.
+
+  if (LResponseFileCount > 1) or (LTotalTokens > 1) then
+    Exit(SetError(ekResponseFile, edResponseFileMustBeSole, SResponseFileMustBeSole, 0, LResponseFileToken));
+
+  // Exactly one token, which is "@<filename>". Load the file.
+  LFileName := LResponseFileToken;
+  Delete(LFileName, 1, 1);
+
+  if not FileExists(LFileName) then
+    Exit(SetError(ekResponseFile, edResponseFileNotFound, SResponseFileNotFound, 0, LFileName));
+
+  LFileLines := TStringList.Create;
+  try
+    // Load as UTF-8 by default. A BOM, if present, still wins; but for the
+    // common no-BOM case this avoids falling back to the system ANSI codepage
+    // and mangling non-ASCII values.
+    LFileLines.LoadFromFile(LFileName, TEncoding.UTF8);
+    // Join all lines with single spaces. GrabNextElement re-tokenizes this
+    // exactly like a regular command line, with full quoting support.
+    ACommandLine := string.Join(' ', LFileLines.ToStringArray);
+  finally
+    LFileLines.Free;
+  end;
+
+  // Recursion guard: the expanded content must not itself contain @-tokens.
+  LCopy := ACommandLine;
+
+  while GrabNextElement(LCopy, LToken) do
+    if LToken.StartsWith('@') then
+      Exit(SetError(ekResponseFile, edResponseFileMustBeSole, SResponseFileMustBeSole, 0, LToken));
+
+  Result := True;
+end;
+
+function TCommandLineParser.FileSystemCheck(const ASwitchData: TSwitchData; var AFileOrDirectoryNotFound: string): TFSCheckResult;
 var
   LStringValue: string;
   LStringArray: TArray<string>;
 begin
-  Result := soUnknown;
+  Result := fscOk;
+
+  // Nothing to check: the switch wasn't provided and there is no default to validate.
+  if (not ASwitchData.HasValue) and (ASwitchData.DefaultValue = '') then
+    Exit;
 
   LStringValue := ASwitchData.GetValueOrDefault;
   LStringArray := SplitArray(LStringValue);
@@ -806,36 +1210,45 @@ begin
   begin
     for var LFileName in LStringArray do
       if not FileExists(LFileName) then
-        Exit(soFileMustExist);
+      begin
+        AFileOrDirectoryNotFound := LFileName;
+        Exit(fscFileMissing);
+      end;
   end
   else if soDirectoryMustExist in ASwitchData.Options then
   begin
     for var LDirectory in LStringArray do
       if not DirectoryExists(LDirectory) then
-        Exit(soDirectoryMustExist);
+      begin
+        AFileOrDirectoryNotFound := LDirectory;
+        Exit(fscDirectoryMissing);
+      end;
   end;
 end;
 
 function TCommandLineParser.FindExtendableSwitch(const ASwitchName: string; var AParam: string; var AData: TSwitchData): Boolean;
 var
-  kv: TPair<string, TSwitchData>;
+  LSwitchEntry: TPair<string, TSwitchData>;
 begin
   Result := False;
 
-  for kv in FSwitchDict do
+  for LSwitchEntry in FSwitchDict do
   begin
-    if ASwitchName.StartsWith(kv.Key, True) then
+    if not (soExtendable in LSwitchEntry.Value.Options) then
+      Continue;
+
+    if ASwitchName.StartsWith(LSwitchEntry.Key, True) then
     begin
-      AData := kv.Value;
+      AData := LSwitchEntry.Value;
       AParam := ASwitchName;
-      Delete(AParam, 1, Length(kv.Key));
+      Delete(AParam, 1, Length(LSwitchEntry.Key));
 
       Exit(True);
     end;
   end;
 end;
 
-function TCommandLineParser.GetCommandLine: string;
+function TCommandLineParser.BuildCommandLineFromParams: string;
 var
   LIndex: Integer;
 begin
@@ -858,6 +1271,26 @@ begin
   Result := FErrorInfo;
 end;
 
+function TCommandLineParser.GetHelpRequested: Boolean;
+begin
+  Result := FHelpRequested;
+end;
+
+function TCommandLineParser.IsBuiltInHelpToken(const ARawToken: string): Boolean;
+const
+  CHelpTokens: array [0..{$IFDEF MSWINDOWS}5{$ELSE}2{$ENDIF}] of string = (
+    '-h', '-?', '--help'
+    {$IFDEF MSWINDOWS}, '/h', '/?', '/help'{$ENDIF});
+var
+  LToken: string;
+begin
+  for LToken in CHelpTokens do
+    if SameText(ARawToken, LToken) then
+      Exit(True);
+
+  Result := False;
+end;
+
 function TCommandLineParser.GetExtension(const ASwitch: string): string;
 var
   LSwitchData: TSwitchData;
@@ -876,72 +1309,69 @@ begin
   Result := FOptions;
 end;
 
-// TODO: Rename parameters
-function TCommandLineParser.GrabNextElement(var s, el: string): Boolean;
+function TCommandLineParser.GrabNextElement(var ARemaining, AToken: string): Boolean;
 var
-  LPosition: Integer;
+  LIndex: Integer;
+  LInQuote: Boolean;
 begin
-  el := '';
-  s := TrimLeft(s);
+  AToken := '';
+  ARemaining := TrimLeft(ARemaining);
 
-  if s = '' then
+  if ARemaining = '' then
     Exit(False);
 
-  if s[1] = '"' then
+  LInQuote := False;
+  LIndex := 1;
+
+  while LIndex <= Length(ARemaining) do
   begin
-    repeat
-      LPosition := PosEx('"', s, 2);
+    if ARemaining[LIndex] = '"' then
+    begin
+      if LInQuote and (LIndex < Length(ARemaining)) and (ARemaining[LIndex + 1] = '"') then
+      begin
+        // Escaped quote inside a quoted region: emit a single quote and skip both.
+        AToken := AToken + '"';
+        Inc(LIndex, 2);
+        Continue;
+      end;
 
-      if LPosition <= 0 then //unterminated quote
-        LPosition := Length(s);
+      LInQuote := not LInQuote;
+    end
+    else if (ARemaining[LIndex] = ' ') and not LInQuote then
+      Break
+    else
+      AToken := AToken + ARemaining[LIndex];
 
-      el := el + Copy(s, 1, LPosition);
-      Delete(s, 1, LPosition);
-    until (s = '') or (s[1] <> '"');
-
-    Delete(el, 1, 1);
-
-    if el[Length(el)] = '"' then
-      Delete(el, Length(el), 1);
-
-    el := StringReplace(el, '""', '"', [rfReplaceAll]);
-  end
-  else 
-  begin
-    LPosition := Pos(' ', s);
-
-    if LPosition <= 0 then //last element
-      LPosition := Length(s) + 1;
-
-    el := Copy(s, 1, LPosition - 1);
-
-    Delete(s, 1, LPosition);
+    Inc(LIndex);
   end;
 
-  Result := True;
-end; { TCommandLineParser.GrabNextElement }
+  Delete(ARemaining, 1, LIndex);
 
-function TCommandLineParser.IsSwitch(const ASwitchRawValue: string; var AParam: string; var AData: TSwitchData): Boolean;
+  Result := True;
+end;
+
+function TCommandLineParser.IsSwitch(const ASwitchRawValue: string; var AParam: string; var AHasParamDelim: Boolean; var AData: TSwitchData): Boolean;
 var
   LDelimPos: Integer;
-  LMinPos: Integer;
+  LFirstDelimPos: Integer;
   LName: string;
-  LPd: Char;
-  LSd: string;
-  LSwitchRawValue: string;
+  LParamDelim: Char;
+  LSwitchDelim: string;
+  LSwitchBody: string;
 begin
   Result := False;
   AParam := '';
+  AHasParamDelim := False;
 
-  LSwitchRawValue := ASwitchRawValue;
-  for LSd in FSwitchDelims do
-    if StartsStr(LSd, LSwitchRawValue) then
+  LSwitchBody := ASwitchRawValue;
+  for LSwitchDelim in SWITCH_DELIMITERS do
+    if StartsStr(LSwitchDelim, LSwitchBody) then
     begin
-      LSwitchRawValue := ASwitchRawValue;
+      LSwitchBody := ASwitchRawValue;
 
-      Delete(LSwitchRawValue, 1, Length(LSd));
+      Delete(LSwitchBody, 1, Length(LSwitchDelim));
 
-      if LSwitchRawValue <> '' then
+      if LSwitchBody <> '' then
         Result := True;
 
       Break;
@@ -949,22 +1379,23 @@ begin
 
   if Result then //try to extract parameter data
   begin
-    LName := LSwitchRawValue;
-    LMinPos := 0;
+    LName := LSwitchBody;
+    LFirstDelimPos := 0;
 
-    for LPd in FParamDelims do
+    for LParamDelim in PARAM_DELIMITERS do
     begin
-      LDelimPos := Pos(LPd, LName);
+      LDelimPos := Pos(LParamDelim, LName);
 
-      if (LDelimPos > 0) and ((LMinPos = 0) or (LDelimPos < LMinPos)) then
-        LMinPos := LDelimPos;
+      if (LDelimPos > 0) and ((LFirstDelimPos = 0) or (LDelimPos < LFirstDelimPos)) then
+        LFirstDelimPos := LDelimPos;
     end;
 
-    if LMinPos > 0 then
+    if LFirstDelimPos > 0 then
     begin
+      AHasParamDelim := True;
       AParam := LName;
-      Delete(AParam, 1, LMinPos);
-      LName := Copy(LName, 1, LMinPos - 1);
+      Delete(AParam, 1, LFirstDelimPos);
+      LName := Copy(LName, 1, LFirstDelimPos - 1);
     end;
 
     FSwitchDict.TryGetValue(LName, AData);
@@ -974,9 +1405,9 @@ begin
 
     if not Assigned(AData) then //try short name
     begin
-      if FSwitchDict.TryGetValue(LSwitchRawValue[1], AData) then
+      if FSwitchDict.TryGetValue(LSwitchBody[1], AData) then
       begin
-        AParam := LSwitchRawValue;
+        AParam := LSwitchBody;
         Delete(AParam, 1, 1);
 
         if (AParam <> '') and (AData.SwitchType = stBoolean) then // misdetection, Boolean switch cannot accept data
@@ -986,19 +1417,28 @@ begin
   end;
 end;
 
-function TCommandLineParser.MapPropertyType(const AProp: TRttiProperty; const APropertyRttiType: TRttiType): TCLPSwitchType;
+function TCommandLineParser.MapPropertyType(const AProp: TRttiProperty): TCLPSwitchType;
 
-  procedure RaiseUnsupportedPropertyType(const AProp: TRttiProperty; var AResult: TCLPSwitchType);
+  procedure RaiseUnsupportedPropertyType(const AProp: TRttiProperty; var AResult: TCLPSwitchType); noreturn;
   begin
-    AResult := stString; // Just something to get rid of compiler warning
+    AResult := stString; // Dummy assignment to silence the "Result not set" compiler warning.
 
-    raise Exception.CreateFmt(SUnsupportedPropertyType, [AProp.Name]);
+    raise Exception.CreateFmt(SUnsupportedPropertyType, [AProp.Name]) at ReturnAddress;
   end;
 
 begin
   case AProp.PropertyType.TypeKind of
     tkInteger, tkInt64:
       Result := stInteger;
+    tkFloat:
+      if AProp.PropertyType.Handle = TypeInfo(TDate) then
+        Result := stDate
+      else if AProp.PropertyType.Handle = TypeInfo(TTime) then
+        Result := stTime
+      else if AProp.PropertyType.Handle = TypeInfo(TDateTime) then
+        Result := stDateTime
+      else
+        Result := stFloat;
     tkEnumeration:
       if AProp.PropertyType.Handle = TypeInfo(Boolean) then
         Result := stBoolean
@@ -1008,8 +1448,10 @@ begin
       Result := stString;
     tkDynArray:
       begin
-        if APropertyRttiType.TypeKind = tkChar then
-          Result := stStringDynArray
+        var LArrayType := AProp.PropertyType as TRttiDynamicArrayType;
+
+        if LArrayType.ElementType.TypeKind in [tkUString, tkLString, tkWString, tkString] then
+          Result := stStringArray
         else
           RaiseUnsupportedPropertyType(AProp, Result);
       end
@@ -1019,7 +1461,11 @@ begin
 end;
 
 function TCommandLineParser.Parse(const ACommandLine: string; const ACommandData: TObject): Boolean;
+var
+  LCommandLine: string;
 begin
+  FErrorInfo := Default(TCLPErrorInfo);
+  FHelpRequested := False;
   FSwitchDict.Clear;
   SetLength(FPositionals, 0);
   FSwitchList.Clear;
@@ -1029,38 +1475,49 @@ begin
   Result := CheckAttributes;
 
   if not Result then
-    raise ECLPConfigurationError.Create(ErrorInfo)
-  else
-    Result := ProcessCommandLine(ACommandData, ACommandLine);
+    raise ECLPConfigurationError.Create(ErrorInfo) at ReturnAddress;
+
+  LCommandLine := ACommandLine;
+
+  if not ExpandResponseFile(LCommandLine) then
+    Exit(False);
+
+  Result := ProcessCommandLine(ACommandData, LCommandLine);
 end;
 
 function TCommandLineParser.Parse(const ACommandData: TObject): Boolean;
 begin
-  Result := Parse(GetCommandLine, ACommandData);
+  Result := Parse(BuildCommandLineFromParams, ACommandData);
 end;
 
-procedure TCommandLineParser.ProcessAttributes(const AInstance: TObject; const AProp: TRttiProperty;
-  const APropertyRttiType: TRttiType);
+procedure TCommandLineParser.ProcessAttributes(const AInstance: TObject; const AProp: TRttiProperty);
 
-  procedure AddLongName(const ALongForm, AShortForm: string; var ALongNames: TCLPLongNames);
+  procedure AddLongName(const ALongForm, AAbbreviation: string; var ALongNames: TCLPLongNames);
   begin
     SetLength(ALongNames, Length(ALongNames) + 1);
 
-    ALongNames[High(ALongNames)] := TCLPLongName.Create(ALongForm, AShortForm);
+    ALongNames[High(ALongNames)] := TCLPLongName.Create(ALongForm, AAbbreviation);
   end;
 
 var
   LAttribute: TCustomAttribute;
   LDefault: string;
   LDescription: string;
+  LEnvironmentVariable: string;
+  LIllegalValues: TArray<string>;
   LLongNames: TCLPLongNames;
-  LNName: string;
+  LShortName: string;
   LOptions: TCLPSwitchOptions;
   LParamName: string;
   LPosition: Integer;
+  LRangeAttr: CLPRangeAttribute;
 begin
-  LNName := '';
+  LRangeAttr := nil;
+  SetLength(LIllegalValues, 0);
+
+  LShortName := '';
   LDescription := '';
+  LEnvironmentVariable := '';
   LParamName := CLPDescriptionAttribute.DefaultValue;
   LOptions := [];
   LPosition := 0;
@@ -1069,16 +1526,20 @@ begin
 
   for LAttribute in AProp.GetAttributes do
   begin
-    if LAttribute is CLPNameAttribute then
-      LNName := CLPNameAttribute(LAttribute).Name
+    // A CLPSkip attribute means "ignore this property entirely" — bail out
+    // immediately without registering a switch.
+    if LAttribute is CLPSkipAttribute then
+      Exit
+    else if LAttribute is CLPNameAttribute then
+      LShortName := CLPNameAttribute(LAttribute).Name
     else if LAttribute is CLPLongNameAttribute then
-      AddLongName(CLPLongNameAttribute(LAttribute).LongName, CLPLongNameAttribute(LAttribute).ShortForm, LLongNames)
+      AddLongName(CLPLongNameAttribute(LAttribute).LongName, CLPLongNameAttribute(LAttribute).Abbreviation, LLongNames)
     else if LAttribute is CLPDefaultAttribute then
       LDefault := CLPDefaultAttribute(LAttribute).DefaultValue
     else if LAttribute is CLPDescriptionAttribute then
     begin
       LDescription := CLPDescriptionAttribute(LAttribute).Description;
-      LParamName := CLPDescriptionAttribute(LAttribute).paramName;
+      LParamName := CLPDescriptionAttribute(LAttribute).ParamName;
     end
     else if LAttribute is CLPRequiredAttribute then
       Include(LOptions, soRequired)
@@ -1097,36 +1558,86 @@ begin
     begin
       Include(LOptions, soPositional);
       Include(LOptions, soPositionRest);
+    end
+    else if LAttribute is CLPEnvironmentAttribute then
+      LEnvironmentVariable := CLPEnvironmentAttribute(LAttribute).VariableName
+    else if LAttribute is CLPRangeAttribute then
+      LRangeAttr := CLPRangeAttribute(LAttribute)
+    else if LAttribute is CLPIllegalValueAttribute then
+    begin
+      SetLength(LIllegalValues, Length(LIllegalValues) + 1);
+      LIllegalValues[High(LIllegalValues)] := CLPIllegalValueAttribute(LAttribute).Value;
     end;
-  end; //for attr
+  end;
 
-  if (Length(LLongNames) = 0) and (not SameText(AProp.Name, Trim(LNName))) then
+  if (Length(LLongNames) = 0) and (not SameText(AProp.Name, Trim(LShortName))) then
     AddLongName(AProp.Name, '', LLongNames);
 
-  AddSwitch(AInstance, AProp.Name, Trim(LNName), LLongNames, MapPropertyType(AProp, APropertyRttiType), LPosition,
-    LOptions, LDefault, Trim(LDescription), Trim(LParamName));
+  AddSwitch(AInstance, AProp.Name, Trim(LShortName), LLongNames, MapPropertyType(AProp), LPosition,
+    LOptions, LDefault, Trim(LDescription), Trim(LParamName), Trim(LEnvironmentVariable));
+
+  // Range bounds, if any, apply to the just-added switch (last in FSwitchList).
+  if Assigned(LRangeAttr) then
+  begin
+    if LRangeAttr.IsFloat then
+      FSwitchList.Last.SetFloatRange(LRangeAttr.MinFloat, LRangeAttr.MaxFloat)
+    else
+      FSwitchList.Last.SetIntRange(LRangeAttr.MinInt, LRangeAttr.MaxInt);
+  end;
+
+  // Illegal-value list (CLPIllegalValue attributes) applies to the same switch.
+  for var LIllegal in LIllegalValues do
+    FSwitchList.Last.AddIllegalValue(LIllegal);
 end;
 
 function TCommandLineParser.ProcessCommandLine(const ACommandData: TObject; const ACommandLine: string): Boolean;
 var
-  LSwitchData: TSwitchData;
   LCommandLine: string;
   LCurrentRawParameter: string;
-  LParamValue: string; // -random:ThisParamValueToTheVariable
+  LFileSystemObjectNotFound: string;
+  LHasParamDelim: Boolean;
+  LParamValue: string; // Value extracted from after the parameter delimiter, e.g. 'foo' in '-name:foo'.
   LPosition: Integer;
+  LSwitchData: TSwitchData;
 begin
   Result := True;
 
+  // A CLPDefault that cannot be applied is a developer/configuration mistake
+  // (wrong type, out of CLPRange, bad enum identifier). Surface it as a
+  // configuration error rather than silently leaving the property unset.
   for LSwitchData in FSwitchList do
     if LSwitchData.DefaultValue <> '' then
-      LSwitchData.SetValue(LSwitchData.DefaultValue);
+      if not LSwitchData.SetValue(LSwitchData.DefaultValue) then
+      begin
+        SetError(ekInvalidDefault, edInvalidDefaultValue, SInvalidDefaultValue, 0, LSwitchData.DisplayName);
+        raise ECLPConfigurationError.Create(FErrorInfo) at ReturnAddress;
+      end;
+
+  // Env-var fallback: applied AFTER defaults but BEFORE command-line tokens,
+  // so env vars override defaults and the command line overrides env vars.
+  // An environment value is runtime input (like the command line), so a value
+  // that fails to parse is a normal data error — not silently ignored.
+  for LSwitchData in FSwitchList do
+    if LSwitchData.EnvironmentVariable <> '' then
+    begin
+      var LEnvValue := GetEnvironmentVariable(LSwitchData.EnvironmentVariable);
+
+      if (LEnvValue <> '') and (not LSwitchData.SetValue(LEnvValue)) then
+        Exit(SetError(ekInvalidData, edInvalidDataForSwitch, SInvalidDataForSwitch, 0, LSwitchData.DisplayName));
+    end;
 
   LPosition := 1;
   LCommandLine := ACommandLine;
 
   while GrabNextElement(LCommandLine, LCurrentRawParameter) do
   begin
-    if IsSwitch(LCurrentRawParameter, LParamValue, LSwitchData) then
+    if (opEnableBuiltInHelp in FOptions) and IsBuiltInHelpToken(LCurrentRawParameter) then
+    begin
+      FHelpRequested := True;
+      Exit(True);
+    end;
+
+    if IsSwitch(LCurrentRawParameter, LParamValue, LHasParamDelim, LSwitchData) then
     begin
       if not Assigned(LSwitchData) then
         if opIgnoreUnknownSwitches in FOptions then
@@ -1138,22 +1649,26 @@ begin
       begin
         if (LParamValue = '') or (soExtendable in LSwitchData.Options) then
         begin
-          LSwitchData.Enable;
+          LSwitchData.SetBooleanTrue;
 
           if LParamValue <> '' then
             LSwitchData.ParamValue := LParamValue;
         end
         else
         begin
-          var BoolValue: Boolean;
+          var LBoolValue: Boolean;
 
-          if TryStrToBool(LParamValue, BoolValue) then
+          if TryStrToBool(LParamValue, LBoolValue) then
             LSwitchData.SetValue(LParamValue)
           else
             Exit(SetError(ekInvalidData, edBooleanWithData, SBooleanSwitchCannotAcceptData, 0, LCurrentRawParameter));
         end;
       end
-      else if LParamValue <> '' then
+      // A non-Boolean switch with an explicit '=' or ':' delimiter is treated
+      // as "provided" even when the value is empty — SetValue is called so the
+      // property is set to '' (for strings) or a parse error fires (for
+      // numeric/enum types).
+      else if (LParamValue <> '') or LHasParamDelim then
         if not LSwitchData.SetValue(LParamValue) then
           Exit(SetError(ekInvalidData, edInvalidDataForSwitch, SInvalidDataForSwitch, 0, LCurrentRawParameter));
     end
@@ -1179,46 +1694,35 @@ begin
     end;
   end; //while s <> ''
 
-  for LSwitchData in FPositionals do
+  // Single post-parse validation pass. FSwitchList contains every switch
+  // (positional and named), so one loop is enough — the error kind is picked
+  // based on whether the switch is positional.
+  for LSwitchData in FSwitchList do
   begin
-    if (soRequired in LSwitchData.Options) and (not LSwitchData.Provided) then
-      Exit(SetError(ekMissingPositional, edMissingRequiredParameter, SRequiredParameterWasNotProvided, LSwitchData.Position,
-        LSwitchData.LongNames[0].LongForm))
+    if (soRequired in LSwitchData.Options) and (not LSwitchData.HasValue) then
+    begin
+      if soPositional in LSwitchData.Options then
+        Exit(SetError(ekMissingPositional, edMissingRequiredParameter, SRequiredParameterWasNotProvided,
+          LSwitchData.Position, LSwitchData.DisplayName))
+      else
+        Exit(SetError(ekMissingNamed, edMissingRequiredSwitch, SRequiredSwitchWasNotProvided,
+          0, LSwitchData.DisplayName));
+    end
     else if (soFileMustExist in LSwitchData.Options) or (soDirectoryMustExist in LSwitchData.Options) then
     begin
-      if LSwitchData.SwitchType in [stString, stStringDynArray] then
+      if LSwitchData.SwitchType in [stString, stStringArray] then
       begin
-        case FileSystemCheck(LSwitchData) of
-          soFileMustExist: Exit(SetError(ekFileDoNotExist, edFileDoNotExist, SFileDoNotExist, LSwitchData.Position,
-            LSwitchData.LongNames[0].LongForm));
-          soDirectoryMustExist: Exit(SetError(ekDirectoryDoNotExist, edDirectoryDoNotExist, SDirectoryDoNotExist, LSwitchData.Position,
-            LSwitchData.LongNames[0].LongForm));
+        case FileSystemCheck(LSwitchData, LFileSystemObjectNotFound) of
+          fscFileMissing: Exit(SetError(ekFileDoesNotExist, edFileDoesNotExist, SFileDoesNotExist + ': '
+            + LFileSystemObjectNotFound.QuotedString('"'),
+            LSwitchData.Position, LSwitchData.DisplayName));
+          fscDirectoryMissing: Exit(SetError(ekDirectoryDoesNotExist, edDirectoryDoesNotExist, SDirectoryDoesNotExist + ': '
+            + LFileSystemObjectNotFound.QuotedString('"'), LSwitchData.Position, LSwitchData.DisplayName));
         end;
       end
       else
-        Exit(SetError(ekWronDataTypeForFileOrDirectoryMustExist, edWrongDataTypeForFileOrDirectoryMustExist,
-          SWrongDataTypeForFileOrDirectoryMustExist, LSwitchData.Position, LSwitchData.LongNames[0].LongForm));
-    end;
-  end;
-
-  for LSwitchData in FSwitchlist do
-  begin
-    if (soRequired in LSwitchData.Options) and (not LSwitchData.Provided) then
-      Exit(SetError(ekMissingNamed, edMissingRequiredSwitch, SRequiredSwitchWasNotProvided, 0, LSwitchData.LongNames[0].LongForm))
-    else if (soFileMustExist in LSwitchData.Options) or (soDirectoryMustExist in LSwitchData.Options) then
-    begin
-      if LSwitchData.SwitchType in [stString, stStringDynArray] then
-      begin
-        case FileSystemCheck(LSwitchData) of
-          soFileMustExist: Exit(SetError(ekFileDoNotExist, edFileDoNotExist, SFileDoNotExist, LSwitchData.Position,
-            LSwitchData.LongNames[0].LongForm));
-          soDirectoryMustExist: Exit(SetError(ekDirectoryDoNotExist, edDirectoryDoNotExist, SDirectoryDoNotExist, LSwitchData.Position,
-            LSwitchData.LongNames[0].LongForm));
-        end;
-      end
-      else
-        Exit(SetError(ekWronDataTypeForFileOrDirectoryMustExist, edWrongDataTypeForFileOrDirectoryMustExist,
-          SWrongDataTypeForFileOrDirectoryMustExist, LSwitchData.Position, LSwitchData.LongNames[0].LongForm));
+        Exit(SetError(ekWrongDataTypeForFileOrDirectoryMustExist, edWrongDataTypeForFileOrDirectoryMustExist,
+          SWrongDataTypeForFileOrDirectoryMustExist, LSwitchData.Position, LSwitchData.DisplayName));
     end;
   end;
 end;
@@ -1228,20 +1732,20 @@ var
   LContext: TRttiContext;
   LProperty: TRttiProperty;
   LRttiType: TRttiType;
-  LCLassType: TClass;
+  LClassType: TClass;
 begin
   LContext := TRttiContext.Create;
   LClassType := ACommandData.ClassType;
 
-  while Assigned(LCLassType) do
+  while Assigned(LClassType) do
   begin
-    LRttiType := LContext.GetType(LCLassType);
+    LRttiType := LContext.GetType(LClassType);
 
     for LProperty in LRttiType.GetProperties do
       if LProperty.Parent = LRttiType then
-        ProcessAttributes(ACommandData, LProperty, LContext.GetType(LProperty.Handle));
+        ProcessAttributes(ACommandData, LProperty);
 
-    LCLassType := LCLassType.ClassParent;
+    LClassType := LClassType.ClassParent;
   end;
 end;
 
@@ -1275,203 +1779,349 @@ begin
   end;
 end;
 
-{ TUsageFormatter }
+{ Usage text helpers (pure, state-free, exposed for unit testing) }
 
-function TUsageFormatter.AddParameter(const AName, APrefix, ADelim: string; const AData: TSwitchData): string;
-begin
-  Result := AName + ADelim + AData.ParamName;
-
-  if not APrefix.IsEmpty then
-    Result := APrefix + Result;
-end;
-
-procedure TUsageFormatter.AlignAndWrap(const ASl: TStringList; const AWrapAtColumn: Integer);
-var
-  LIndex: Integer;
-  LMaxPos: Integer;
-  LPosDel: Integer;
-  LStringValue: string;
-begin
-  LMaxPos := 0;
-
-  for LStringValue in ASl do
-  begin
-    LPosDel := Pos(' ' + FSwitchDelims[0], LStringValue);
-
-    if LPosDel > LMaxPos then
-      LMaxPos := LPosDel;
-  end;
-
-  LIndex := 0;
-
-  while LIndex < ASl.Count do
-  begin
-    LStringValue := ASl[LIndex];
-    LPosDel := Pos(' ' + FSwitchDelims[0], LStringValue);
-
-    if (LPosDel > 0) and (LPosDel < LMaxPos) then
-    begin
-      Insert(StringOfChar(' ', LMaxPos - LPosDel), LStringValue, LPosDel);
-      ASl[LIndex] := LStringValue;
-    end;
-
-    if Length(LStringValue) >= AWrapAtColumn then
-    begin
-      LPosDel := LastSpaceBefore(LStringValue, AWrapAtColumn);
-
-      if LPosDel > 0 then
-      begin
-        ASl.Insert(LIndex + 1, StringOfChar(' ', LMaxPos + 2) + Copy(LStringValue, LPosDel + 1, Length(LStringValue) - LPosDel));
-        ASl[LIndex] := Copy(LStringValue, 1, LPosDel - 1);
-        Inc(LIndex);
-      end;
-    end;
-
-    Inc(LIndex);
-  end;
-end;
-
-function TUsageFormatter.GetCommandLinePrototype(const APositionalParams: TArray<TSwitchData>; const ASwitchList: TObjectList<TSwitchData>): string;
-
-  function GetName(const ASwitchData: TSwitchData): string;
-  begin
-    if (Length(ASwitchData.LongNames) >= 1) and not ASwitchData.LongNames[0].LongForm.IsEmpty then
-      Result := ASwitchData.LongNames[0].LongForm
-    else
-      Result := ASwitchData.PropertyName;
-  end;
-
-var
-  LSwitchData: TSwitchData;
-begin
-  Result := '';
-
-  for LSwitchData in APositionalParams do
-  begin
-    // TODO: Have not tested this, might not be too pretty
-    Result := Result + GetPositionalSwitchName(LSwitchData);
-    Result := Result + ' ';
-  end;
-
-  for LSwitchData in ASwitchList do
-  begin
-    if not (soRequired in LSwitchData.Options) then
-      Result := Result + '[';
-
-    Result := Result + FSwitchDelims[0] + GetName(LSwitchData);
-
-    if not LSwitchData.ParamName.IsEmpty then
-      Result := Result + FParamDelims[0] + LSwitchData.ParamName;
-
-    if not (soRequired in LSwitchData.Options) then
-      Result := Result + ']';
-
-    Result := Result + ' ';
-  end;
-end;
-
-function TUsageFormatter.GetPositionalSwitchName(const ASwitchData: TSwitchData): string;
-begin
-  if ASwitchData.Name <> '' then
-    Result := ASwitchData.Name
-  else if Length(ASwitchData.LongNames) <> 0 then
-    Result := ASwitchData.LongNames[0].LongForm
-  else
-    Result := IntToStr(ASwitchData.Position);
-end;
-
-function TUsageFormatter.LastSpaceBefore(const AValue: string; const AStartPos: Integer): Integer;
+function CLPLastSpaceBefore(const AValue: string; const AStartPos: Integer): Integer;
 begin
   Result := AStartPos - 1;
+
+  if Result > Length(AValue) then
+    Result := Length(AValue);
 
   while (Result > 0) and (AValue[Result] <> ' ') do
     Dec(Result);
 end;
 
-procedure TUsageFormatter.Usage(const AParser: TCommandLineParser; var AUsageList: TArray<string>; const AWrapAtColumn: Integer = 80);
+function CLPWordWrapLine(const ALine: string; const AWrapAtColumn, AHangingIndent: Integer): TArray<string>;
 var
-  LAddedOptions: Boolean;
-  LCommandLine: string;
-  LSwitchData: TSwitchData;
-  LHelp: TStringList;
-  LLongName: TCLPLongName;
-  LName: string;
-  LName2: string;
+  LResult: TList<string>;
+  LRemaining: string;
+  LIndentStr: string;
+  LBreak: Integer;
 begin
-  LHelp := TStringList.Create;
+  LResult := TList<string>.Create;
   try
-    LCommandLine := ExtractFileName(ParamStr(0));
+    LIndentStr := StringOfChar(' ', AHangingIndent);
+    LRemaining := ALine;
 
-    for LSwitchData in AParser.Positionals do
+    while (AWrapAtColumn > 0) and (Length(LRemaining) > AWrapAtColumn) do
     begin
-      if not Assigned(LSwitchData) then // error in definition class
-        LHelp.Add('*** missing ***')
-      else
-      begin
-        LNAme := GetPositionalSwitchName(LSwitchData);
+      LBreak := CLPLastSpaceBefore(LRemaining, AWrapAtColumn + 1);
 
-        LCommandLine := LCommandLine + ' ' + Wrap(LName, LSwitchData);
-        LHelp.Add(Format('%s - %s', [Wrap(LName, LSwitchData), LSwitchData.Description]));
-      end;
+      // No usable break point inside the wrappable region — either a single
+      // word longer than the column, or the only space is within the hanging
+      // indent / left column. Emit the rest intact rather than splitting a word
+      // or looping forever.
+      if LBreak <= AHangingIndent then
+        Break;
+
+      LResult.Add(Copy(LRemaining, 1, LBreak - 1));
+      LRemaining := LIndentStr + TrimLeft(Copy(LRemaining, LBreak + 1, Length(LRemaining)));
     end;
 
-    LAddedOptions := False;
-
-    for LSwitchData in AParser.SwitchList do
-    begin
-      if not (soPositional in LSwitchData.Options) then
-      begin
-        if not LAddedOptions then
-        begin
-          LCommandLine := LCommandLine + ' ' + SOptions;
-          LAddedOptions := True;
-        end;
-
-        LName := '';
-
-        if LSwitchData.Name <> '' then
-          LName := Wrap(AddParameter(LSwitchData.Name, '-', '', LSwitchData), LSwitchData);
-
-        for LLongName in LSwitchData.LongNames do
-        begin
-          LName2 := Wrap(AddParameter(LLongName.LongForm, '-', ':', LSwitchData), LSwitchData);
-
-          if LName <> '' then
-            LName := LName + ', ';
-
-          LName := LName + LName2;
-        end;
-
-        LName := LName + ' - ' + LSwitchData.Description;
-
-        if LSwitchData.DefaultValue <> '' then
-          LName := LName + SDefault + LSwitchData.DefaultValue;
-
-        LHelp.Add(LName);
-      end;
-    end;
-
-    if AWrapAtColumn > 0 then
-      AlignAndWrap(LHelp, AWrapAtColumn);
-
-    LHelp.Insert(0, LCommandLine);
-    LHelp.Insert(1, '  ' + GetCommandLinePrototype(AParser.Positionals, AParser.SwitchList));
-    LHelp.Insert(2, '');
-
-    AUsageList := LHelp.ToStringArray;
+    LResult.Add(LRemaining);
+    Result := LResult.ToArray;
   finally
-    FreeAndNil(LHelp);
+    LResult.Free;
   end;
 end;
 
-function TUsageFormatter.Wrap(const AName: string; const AData: TSwitchData): string;
+function CLPFormatTwoColumnBlock(const ALeft, ARight: TArray<string>; const ASeparator: string;
+  const AWrapAtColumn: Integer): TArray<string>;
+var
+  LResult: TList<string>;
+  LMaxLeft: Integer;
+  LIndex: Integer;
+  LPaddedLeft: string;
+begin
+  LResult := TList<string>.Create;
+  try
+    LMaxLeft := 0;
+
+    for LIndex := 0 to High(ALeft) do
+      if Length(ALeft[LIndex]) > LMaxLeft then
+        LMaxLeft := Length(ALeft[LIndex]);
+
+    for LIndex := 0 to High(ALeft) do
+    begin
+      LPaddedLeft := ALeft[LIndex] + StringOfChar(' ', LMaxLeft - Length(ALeft[LIndex]));
+
+      if (LIndex <= High(ARight)) and (ARight[LIndex] <> '') then
+        LResult.AddRange(CLPWordWrapLine(LPaddedLeft + ASeparator + ARight[LIndex], AWrapAtColumn, LMaxLeft + Length(ASeparator)))
+      else
+        LResult.Add(TrimRight(LPaddedLeft));
+    end;
+
+    Result := LResult.ToArray;
+  finally
+    LResult.Free;
+  end;
+end;
+
+function CLPWrapTokens(const ATokens: TArray<string>; const AWrapAtColumn, AContinuationIndent: Integer): TArray<string>;
+var
+  LResult: TList<string>;
+  LIndent: string;
+  LCurrent: string;
+  LToken: string;
+begin
+  LResult := TList<string>.Create;
+  try
+    LIndent := StringOfChar(' ', AContinuationIndent);
+    LCurrent := '';
+
+    for LToken in ATokens do
+    begin
+      if LToken = '' then
+        Continue;
+
+      if LCurrent = '' then
+        // First token of the first line: no indent. Continuation lines get the
+        // indent applied when a wrap happens, below.
+        LCurrent := LToken
+      else if (AWrapAtColumn > 0) and (Length(LCurrent) + 1 + Length(LToken) > AWrapAtColumn) then
+      begin
+        // The token would overflow the column. Tokens are never split, so the
+        // current line is flushed and the token starts the next (indented) line,
+        // even if the token itself is wider than the column.
+        LResult.Add(LCurrent);
+        LCurrent := LIndent + LToken;
+      end
+      else
+        LCurrent := LCurrent + ' ' + LToken;
+    end;
+
+    if LCurrent <> '' then
+      LResult.Add(LCurrent);
+
+    Result := LResult.ToArray;
+  finally
+    LResult.Free;
+  end;
+end;
+
+{ TUsageFormatter }
+
+function TUsageFormatter.ParamSuffix(const AData: TSwitchData): string;
+begin
+  // Boolean switches are bare flags; showing ':<value>' would wrongly imply
+  // they take an argument.
+  if (AData.SwitchType = stBoolean) or AData.ParamName.IsEmpty then
+    Result := ''
+  else
+    Result := USAGE_PARAM_DELIMITER + AData.ParamName;
+end;
+
+function TUsageFormatter.SwitchLabel(const APrefix, AName: string; const AData: TSwitchData): string;
+begin
+  Result := APrefix + AName + ParamSuffix(AData);
+end;
+
+function TUsageFormatter.NamesColumn(const AData: TSwitchData): string;
+var
+  LLongName: TCLPLongName;
+begin
+  Result := '';
+
+  if AData.Name <> '' then
+    Result := SwitchLabel(USAGE_SHORT_PREFIX, AData.Name, AData);
+
+  for LLongName in AData.LongNames do
+  begin
+    if Result <> '' then
+      Result := Result + ', ';
+
+    Result := Result + SwitchLabel(USAGE_SHORT_PREFIX, LLongName.LongForm, AData);
+  end;
+
+  if Result = '' then // no explicit name at all
+    Result := SwitchLabel(USAGE_SHORT_PREFIX, AData.PropertyName, AData);
+end;
+
+function TUsageFormatter.PrimaryName(const AData: TSwitchData): string;
+begin
+  if (Length(AData.LongNames) >= 1) and not AData.LongNames[0].LongForm.IsEmpty then
+    Result := USAGE_SHORT_PREFIX + AData.LongNames[0].LongForm
+  else if AData.Name <> '' then
+    Result := USAGE_SHORT_PREFIX + AData.Name
+  else
+    Result := USAGE_SHORT_PREFIX + AData.PropertyName;
+
+  Result := Result + ParamSuffix(AData);
+end;
+
+function TUsageFormatter.PositionalName(const AData: TSwitchData): string;
+begin
+  if AData.Name <> '' then
+    Result := AData.Name
+  else if Length(AData.LongNames) <> 0 then
+    Result := AData.LongNames[0].LongForm
+  else
+    Result := IntToStr(AData.Position);
+end;
+
+function TUsageFormatter.Decorate(const AText: string; const AData: TSwitchData): string;
 begin
   if not (soRequired in AData.Options) then
-    Result := '[' + AName + ']'
+    Result := '[' + AText + ']'
   else if soPositional in AData.Options then
-    Result := '<' + AName + '>'
+    Result := '<' + AText + '>'
   else
-    Result := AName;
+    Result := AText;
+end;
+
+function TUsageFormatter.BuildPrototypeTokens(const APositionals: TArray<TSwitchData>; const ASwitchList: TObjectList<TSwitchData>): TArray<string>;
+var
+  LSwitchData: TSwitchData;
+  LResult: TList<string>;
+begin
+  LResult := TList<string>.Create;
+  try
+    for LSwitchData in APositionals do
+      if Assigned(LSwitchData) then
+        LResult.Add(Decorate(PositionalName(LSwitchData), LSwitchData));
+
+    // Only NON-positional switches here — positionals are listed above. (The old
+    // implementation listed positionals twice.)
+    for LSwitchData in ASwitchList do
+      if not (soPositional in LSwitchData.Options) then
+        LResult.Add(Decorate(PrimaryName(LSwitchData), LSwitchData));
+
+    Result := LResult.ToArray;
+  finally
+    LResult.Free;
+  end;
+end;
+
+type
+  // One switch's help, captured before layout so we can choose how to render it.
+  TUsageDetail = record
+    SwitchLabel: string;  // e.g. '[-UserName:<usernane>]'
+    Description: string;   // e.g. 'User name for Db connection'
+    DefaultValue: string;  // e.g. 'SYSDBA' (empty when no default)
+  end;
+
+procedure TUsageFormatter.Usage(const AParser: TCommandLineParser; var AUsageList: TArray<string>; const AWrapAtColumn: Integer = 80);
+var
+  LSwitchData: TSwitchData;
+  LResult: TList<string>;
+  LDetails: TList<TUsageDetail>;
+  LDetail: TUsageDetail;
+  LTokens: TArray<string>;
+  LLeft: TArray<string>;
+  LRight: TArray<string>;
+  LIndex: Integer;
+  LLeftWidth: Integer;
+  LCompact: Boolean;
+
+  procedure AddDetail(const ALabel, ADescription, ADefault: string);
+  var
+    LItem: TUsageDetail;
+  begin
+    LItem.SwitchLabel := ALabel;
+    LItem.Description := ADescription;
+    LItem.DefaultValue := ADefault;
+    LDetails.Add(LItem);
+  end;
+
+  // The single-line (compact) right-hand text: description with the default
+  // appended, exactly as the original two-column formatter produced it.
+  function CompactRight(const ADetail: TUsageDetail): string;
+  begin
+    Result := ADetail.Description;
+
+    if ADetail.DefaultValue <> '' then
+      Result := Result + SDefault + ADetail.DefaultValue;
+  end;
+
+  // Stacked layout for one entry: label / '- description' / 'default: value',
+  // each part wrapped at AWrapAtColumn.
+  procedure AppendStacked(const ADetail: TUsageDetail);
+  begin
+    LResult.Add(StringOfChar(' ', USAGE_SWITCH_INDENT) + ADetail.SwitchLabel);
+
+    if ADetail.Description <> '' then
+      LResult.AddRange(CLPWordWrapLine(
+        StringOfChar(' ', USAGE_DESC_INDENT) + USAGE_DESC_PREFIX + ADetail.Description,
+        AWrapAtColumn, USAGE_DETAIL_CONT_INDENT));
+
+    if ADetail.DefaultValue <> '' then
+      LResult.AddRange(CLPWordWrapLine(
+        StringOfChar(' ', USAGE_DETAIL_CONT_INDENT) + USAGE_DEFAULT_LABEL + ADetail.DefaultValue,
+        AWrapAtColumn, USAGE_DETAIL_CONT_INDENT));
+  end;
+
+begin
+  LResult := TList<string>.Create;
+  LDetails := TList<TUsageDetail>.Create;
+  try
+    // [0..] = usage summary: exe name followed by the decorated switch tokens,
+    // wrapped at the requested column on token boundaries (never inside a token).
+    LTokens := BuildPrototypeTokens(AParser.Positionals, AParser.SwitchList);
+    Insert(ExtractFileName(ParamStr(0)), LTokens, 0);
+    LResult.AddRange(CLPWrapTokens(LTokens, AWrapAtColumn, USAGE_PROTO_CONT_INDENT));
+
+    // blank separator
+    LResult.Add('');
+
+    // Collect one detail entry (label / description / default) per switch:
+    // positional switches first, then named switches.
+    for LSwitchData in AParser.Positionals do
+      if not Assigned(LSwitchData) then // error in definition class
+        AddDetail('*** missing ***', '', '')
+      else
+        AddDetail(Decorate(PositionalName(LSwitchData), LSwitchData),
+          LSwitchData.Description, LSwitchData.DefaultValue);
+
+    for LSwitchData in AParser.SwitchList do
+      if not (soPositional in LSwitchData.Options) then
+        AddDetail(Decorate(NamesColumn(LSwitchData), LSwitchData),
+          LSwitchData.Description, LSwitchData.DefaultValue);
+
+    // Choose the layout. Use the compact, aligned two-column layout when EVERY
+    // entry fits on one line within the wrap column; otherwise fall back to the
+    // stacked layout so long switches/descriptions are not crushed. This keeps
+    // short switches with short defaults to a single line instead of three.
+    LLeftWidth := 0;
+    for LIndex := 0 to LDetails.Count - 1 do
+      if Length(LDetails[LIndex].SwitchLabel) > LLeftWidth then
+        LLeftWidth := Length(LDetails[LIndex].SwitchLabel);
+
+    LCompact := True;
+    if AWrapAtColumn > 0 then
+      for LIndex := 0 to LDetails.Count - 1 do
+      begin
+        LDetail := LDetails[LIndex];
+        if (CompactRight(LDetail) <> '') and
+           (LLeftWidth + Length(USAGE_DESC_DELIMITER) + Length(CompactRight(LDetail)) > AWrapAtColumn) then
+        begin
+          LCompact := False;
+          Break;
+        end;
+      end;
+
+    if LCompact then
+    begin
+      SetLength(LLeft, LDetails.Count);
+      SetLength(LRight, LDetails.Count);
+
+      for LIndex := 0 to LDetails.Count - 1 do
+      begin
+        LLeft[LIndex] := LDetails[LIndex].SwitchLabel;
+        LRight[LIndex] := CompactRight(LDetails[LIndex]);
+      end;
+
+      LResult.AddRange(CLPFormatTwoColumnBlock(LLeft, LRight, USAGE_DESC_DELIMITER, AWrapAtColumn));
+    end
+    else
+      for LDetail in LDetails do
+        AppendStacked(LDetail);
+
+    AUsageList := LResult.ToArray;
+  finally
+    LDetails.Free;
+    LResult.Free;
+  end;
 end;
 
 { ECLPConfigurationError }
