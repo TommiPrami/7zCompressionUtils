@@ -35,10 +35,23 @@
 ///     Blog            : http://thedelphigeek.com
 ///   Contributors      : GJ, Lee_Nover, Sean B. Durkin, HHasenack
 ///   Creation date     : 2008-06-12
-///   Last modification : 2022-03-08
-///   Version           : 1.43b
+///   Last modification : 2026-07-08
+///   Version           : 1.43d
 ///</para><para>
 ///   History:
+///     1.43d: 2026-07-08
+///       - Fixed data race on the task's TerminatedEvent handle (issue #216).
+///         TOmniTask.InternalExecute now signals TerminatedEvent while still holding
+///         MonitorLock, so a task controller being destroyed on another thread cannot
+///         close (and let the OS recycle) the handle in the window before SetEvent.
+///     1.43c: 2026-04-15
+///       - Fixed: Terminate leaked TOmniThread object after TerminateThread
+///         (set nil instead of FreeAndNil).
+///       - Fixed: RemoveTerminationEvents did not copy NewMessageEvent,
+///         IdxFirstWaitObject, or IdxLastWaitObject, breaking wait-object
+///         event dispatch and comm channel message delivery.
+///       - Fixed: Asy_UnregisterComm passed IndexOf result to Delete without
+///         checking for -1, causing range error on double-unregister.
 ///     1.43b: 2022-03-08
 ///       - IOmniTaskGroup.WaitForAll/.TerminateAll no longer crashes if the group is empty.
 ///     1.43a: 2021-06-22
@@ -671,6 +684,20 @@ type
 
   function CreateTaskControlList: IOmniTaskControlList;
 
+{$IFDEF OTL_RaceTest}
+type
+  ///<summary>Test-only hook. Fired on the task worker thread immediately before the
+  ///   task's TerminatedEvent is signalled at the end of TOmniTask.InternalExecute,
+  ///   i.e. inside the vulnerable window after MonitorLock has been released but before
+  ///   SetEvent. The issue #216 regression test uses it to deterministically drive
+  ///   task-controller destruction (which closes TerminatedEvent) into that window and
+  ///   then check whether the handle is still valid. Compiled in only when OTL_RaceTest
+  ///   is defined; never present in production builds. See unittests\TestOtlIssue216.pas.</summary>
+  TOtlRaceTestHook = reference to procedure(const eventTerminate: TOmniTransitionEvent);
+var
+  GOtlRaceTestHook: TOtlRaceTestHook;
+{$ENDIF OTL_RaceTest}
+
 type
   TOmniInternalMessageType = (imtStringMsg, imtAddressMsg, imtFuncMsg, imtAnonMsg);
 
@@ -1052,7 +1079,14 @@ type
     otcEventMonitor        : TObject{TOmniEventMonitor};
     otcEventMonitorInternal: boolean;
     otcExecutor            : TOmniTaskExecutor;
-    otcInEventHandler      : boolean;
+    // Nested event-handler dispatch counter (interlocked). Terminate
+    // early-exits when > 0 so an OnMessage / OnTerminated callback that
+    // triggers Terminate on its own task does not deadlock waiting for
+    // itself. Plain boolean was racy when a parent task drained child
+    // messages on its own thread while the child's own thread fired
+    // ForwardTaskTerminated. Backported from OmniThreadLibrary-NG
+    // (commit 2de1757).
+    otcEventHandlerDepth   : integer;
     otcOnMessageExec       : TOmniMessageExec;
     otcOnMessageList       : TGpIntegerObjectList;
     otcOnTerminatedExec    : TOmniMessageExec;
@@ -1611,7 +1645,6 @@ begin
   finally otCleanupLock.ExitWriteLock; end;
   otThreadID := GetThreadID;
   chainTo := nil;
-  eventTerminate := {$IFDEF MSWINDOWS}0{$ELSE}nil{$ENDIF};
   try
     try
       try
@@ -1653,6 +1686,16 @@ begin
             otSharedInfo_ref.Monitor.Send(COmniTaskMsg_Terminated, WPARAM(Int64Rec(UniqueID).Lo), LPARAM(Int64Rec(UniqueID).Hi));
            {$ENDIF} 
           {$ENDIF MSWINDOWS}
+          // Signal TerminatedEvent while still holding MonitorLock. TOmniTaskControl.Destroy
+          // closes TerminatedEvent under the same lock; for a pooled task it does not wait
+          // for this worker thread, so if we released the lock before signalling, Destroy
+          // could close (and the OS could recycle) the handle in between - and we would then
+          // SetEvent an unrelated object. See issue #216 and unittests\TestOtlIssue216.pas.
+          {$IFDEF OTL_RaceTest}
+          if assigned(GOtlRaceTestHook) then
+            GOtlRaceTestHook(eventTerminate);
+          {$ENDIF OTL_RaceTest}
+          SetEvent(eventTerminate);
           otSharedInfo_ref := nil;
         finally sync.Release; end;
       end;
@@ -1662,7 +1705,6 @@ begin
       otExecutor_ref   := nil;
       otParameters_ref := nil;
       otSharedInfo_ref := nil;
-      SetEvent(eventTerminate);
     end;
     if assigned(chainTo) then
       chainTo.Run; // TODO 1 -oPrimoz Gabrijelcic : Should InternalExecute the chained task in the same thread (should work when run in a pool)
@@ -2144,6 +2186,8 @@ begin
   oteInternalLock.Acquire;
   try
     idxComm := oteCommList.IndexOf(comm);
+    if idxComm < 0 then
+      raise Exception.Create('TOmniTaskExecutor.Asy_UnregisterComm: Comm endpoint not registered');
     oteCommList.Delete(idxComm);
     oteCommNewMsgList.Delete(idxComm);
     if oteCommList.Count = 0 then begin
@@ -2889,6 +2933,9 @@ begin
   dstMsgInfo.IdxFirstMessage := srcMsgInfo.IdxFirstMessage - offset;
   dstMsgInfo.IdxLastMessage := srcMsgInfo.IdxLastMessage - offset;
   dstMsgInfo.IdxRebuildHandles := srcMsgInfo.IdxRebuildHandles - offset;
+  dstMsgInfo.NewMessageEvent := srcMsgInfo.NewMessageEvent;
+  dstMsgInfo.IdxFirstWaitObject := srcMsgInfo.IdxFirstWaitObject - offset;
+  dstMsgInfo.IdxLastWaitObject := srcMsgInfo.IdxLastWaitObject - offset;
   dstMsgInfo.NumWaitHandles := srcMsgInfo.NumWaitHandles - offset;
   {$IFDEF MSWINDOWS}
   dstMsgInfo.WaitFlags := srcMsgInfo.WaitFlags;
@@ -3331,23 +3378,26 @@ begin
         TOmniMessageExec(kv.Value).OnMessage(Self, msg1);
       end;
     exec := TOmniMessageExec(otcOnMessageList.FetchObject(msg.MsgID));
-    otcInEventHandler := true;
+    // TInterlockedEx wraps TInterlocked (D-XE+) and InterlockedIncrement /
+    // InterlockedDecrement (pre-XE). v3 supports Delphi 2007+ which lacks
+    // TInterlocked.
+    TInterlockedEx.Increment(otcEventHandlerDepth);
     try
       if assigned(exec) then
         exec.OnMessage(Self, msg)
       else if assigned(otcOnMessageExec) then
         otcOnMessageExec.OnMessage(Self, msg);
-    finally otcInEventHandler := false; end;
+    finally TInterlockedEx.Decrement(otcEventHandlerDepth); end;
   end;
 end; { TOmniTaskControl.ForwardTaskMessage }
 
 procedure TOmniTaskControl.ForwardTaskTerminated;
 begin
   if assigned(otcOnTerminatedExec) then begin
-    otcInEventHandler := true;
+    TInterlockedEx.Increment(otcEventHandlerDepth);
     try
       otcOnTerminatedExec.OnTerminated(Self);
-    finally otcInEventHandler := false; end;
+    finally TInterlockedEx.Decrement(otcEventHandlerDepth); end;
   end;
 end; { TOmniTaskControl.ForwardTaskTerminated }
 
@@ -3886,7 +3936,7 @@ var
   msg: TOmniMessage;
 begin
   //TODO : reset executor and exit immediately if task was not started at all or raise exception?
-  if otcInEventHandler then begin
+  if otcEventHandlerDepth > 0 then begin
     otcDelayedTerminate := true;
     Result := true;
     Exit;
@@ -3915,7 +3965,7 @@ begin
       {$ELSE}
       otcThread.Terminate;
       {$ENDIF MSWINDOWS}
-      otcThread := nil;
+      FreeAndNil(otcThread);
     end
     else if assigned(otcOwningPool) then begin
       otcOwningPool.Cancel(UniqueID, 0);
