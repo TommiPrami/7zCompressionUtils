@@ -22,30 +22,32 @@ uses
 var
   LDirectoryCompress: TDirectoryCompressor;
 begin
+  ExitCode := 0;
+
   var LCommandLineOptions := TDirectoryCompressLineOptions.Create;
   try
     if not ParseCommandLine(LCommandLineOptions) then
-    begin
       ExitCode := EXIT_CODE_ERROR_IN_COMMANDLINE_PARAMS;
 
-      Exit;
-    end;
-
-    LDirectoryCompress := TDirectoryCompressor.Create(LCommandLineOptions);
-    try
-      LDirectoryCompress.Execute;
-
-      {$IFDEF DEBUG}
-      LDirectoryCompress.LockingWriteLn('');
-      LDirectoryCompress.LockingWriteLn('Press [Enter] to continue');
-
-      ReadLn;
-      {$ENDIF}
-    finally
-      LDirectoryCompress.Free;
+    if ExitCode = 0 then
+    begin
+      LDirectoryCompress := TDirectoryCompressor.Create(LCommandLineOptions);
+      try
+        LDirectoryCompress.Execute;
+      finally
+        LDirectoryCompress.Free;
+      end;
     end;
   except
     on E: Exception do
       WriteLn(E.ClassName + ': ' + E.Message);
   end;
+
+{$IFDEF DEBUG}
+  WriteLn('');
+  WriteLn('Press [Enter] to continue');
+
+  ReadLn;
+{$ENDIF}
+
 end.

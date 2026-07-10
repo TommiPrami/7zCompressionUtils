@@ -18,30 +18,35 @@ uses
 var
   LFileCompress: TFileCompress7z;
 begin
+  ExitCode := 0;
   var LCommandLineOptions := TFileCompressOptions.Create;
   try
     if not ParseCommandLine(LCommandLineOptions) then
-    begin
       ExitCode := EXIT_CODE_ERROR_IN_COMMANDLINE_PARAMS;
 
-      Exit;
-    end;
-
-    LFileCompress := TFileCompress7z.Create(LCommandLineOptions);
-    try
-      LFileCompress.Execute;
-
-      {$IFDEF DEBUG}
-      LFileCompress.LockingWriteLn('');
-      LFileCompress.LockingWriteLn('Press [Enter] to continue');
-
-      ReadLn;
-      {$ENDIF}
-    finally
-      LFileCompress.Free;
+    if ExitCode = 0 then
+    begin
+      LFileCompress := TFileCompress7z.Create(LCommandLineOptions);
+      try
+        LFileCompress.Execute;
+      finally
+        LFileCompress.Free;
+      end;
     end;
   except
     on E: Exception do
       WriteLn(E.ClassName + ': ' + E.Message);
   end;
+
+{$IFDEF DEBUG}
+  try
+    WriteLn('');
+    WriteLn('Press [Enter] to continue');
+
+    ReadLn;
+  except
+    // Eat exception on purpose.
+  end;
+{$ENDIF}
+
 end.
